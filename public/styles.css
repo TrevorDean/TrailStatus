@@ -146,6 +146,10 @@ main {
   overflow-x: auto;
 }
 
+.trail-heading span:last-child {
+  text-align: center;
+}
+
 .trail-heading {
   align-items: center;
   background: #1f7a4d;
@@ -153,9 +157,9 @@ main {
   display: grid;
   font-size: 0.8rem;
   font-weight: 800;
-  gap: 14px;
-  grid-template-columns: minmax(170px, 1.4fr) 120px minmax(130px, 1fr) minmax(90px, 0.7fr) auto;
-  min-width: 860px;
+  gap: 8px;
+  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) auto;
+  min-width: 580px;
   padding: 10px 12px 10px 16px;
   text-transform: uppercase;
 }
@@ -167,9 +171,9 @@ main {
 .trail-row {
   align-items: center;
   display: grid;
-  gap: 14px;
-  grid-template-columns: minmax(170px, 1.4fr) 120px minmax(130px, 1fr) minmax(90px, 0.7fr) auto;
-  min-width: 860px;
+  gap: 8px;
+  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) auto;
+  min-width: 580px;
   min-height: 44px;
   padding: 6px 12px 6px 16px;
 }
