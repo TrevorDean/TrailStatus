@@ -151,7 +151,7 @@ function render() {
           <h2>${city}</h2>
           <div class="trail-table" role="table" aria-label="${city} trail statuses">
             <div class="trail-heading" role="row">
-              <span>Trail Report Status</span>
+              <span>Trail Name</span>
               <span>Status</span>
               <span>Updated</span>
               <span>City</span>
