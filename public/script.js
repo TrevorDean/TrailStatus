@@ -24,7 +24,8 @@ const trails = [
     statusArea: "Trinity Track Green Loop",
     statusType: "Trail status",
     trailId: "780968",
-    url: "https://www.trailforks.com/trails/trinity-track-green-loop/"
+    url: "https://www.trailforks.com/trails/trinity-track-green-loop/",
+    sourceUrl: "https://www.trailforks.com/region/willow-park/"
   },
   {
     key: "chisenhall",
@@ -153,6 +154,7 @@ function render() {
               <span>Trail Report Status</span>
               <span>Status</span>
               <span>Updated</span>
+              <span>City</span>
               <span>Source</span>
             </div>
             <div class="trail-list">${cards}</div>
@@ -169,7 +171,7 @@ function renderRow(trail) {
   const status = current?.status || "Loading";
   const statusClass = statusClassFor(status);
   const sourceText = trail.rid || trail.trailId ? `${trail.statusType}: ${trail.statusArea}` : "Manual lookup";
-  const statusUrl = trail.trailId ? trailStatusWidgetUrl(trail.trailId) : trail.url;
+  const statusUrl = trail.sourceUrl || (trail.trailId ? trailStatusWidgetUrl(trail.trailId) : trail.url);
   const updated = current?.updated || current?.detail || "";
   const linkText = hasWidgetStatus ? "Trailforks" : "Find status";
 
@@ -178,6 +180,7 @@ function renderRow(trail) {
       <a class="trail-name" href="${trail.url}" title="${sourceText}">${trail.name}</a>
       <span class="status-pill ${statusClass}">${status}</span>
       <span class="status-updated">${updated}</span>
+      <span class="trail-city">${trail.city}</span>
       <a class="status-link" href="${statusUrl}">${linkText}</a>
     </article>
   `;
