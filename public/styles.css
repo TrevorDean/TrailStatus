@@ -82,7 +82,7 @@ main {
   align-items: end;
   display: grid;
   gap: 18px;
-  grid-template-columns: minmax(220px, 1fr) auto;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
   margin-bottom: 28px;
 }
 

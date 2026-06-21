@@ -113,7 +113,9 @@ const trails = [
 const groupsEl = document.querySelector("#trail-groups");
 const searchEl = document.querySelector("#trail-search");
 const filterButtons = [...document.querySelectorAll("[data-filter]")];
+const statusFilterButtons = [...document.querySelectorAll("[data-status-filter]")];
 let activeFilter = "all";
+let activeStatusFilter = "all";
 let statuses = {};
 
 function trailStatusWidgetUrl(trailId) {
@@ -134,7 +136,12 @@ function render() {
   const visibleTrails = trails.filter((trail) => {
     const matchesCity = activeFilter === "all" || trail.city === activeFilter;
     const matchesSearch = `${trail.city} ${trail.name} ${trail.statusArea}`.toLowerCase().includes(search);
-    return matchesCity && matchesSearch;
+    const status = (statuses[trail.key]?.status || "").toLowerCase();
+    const matchesStatus =
+      activeStatusFilter === "all" ||
+      (activeStatusFilter === "rideable" && (status.includes("open") || status.includes("caution") || status.includes("ideal") || status.includes("dry") || status.includes("variable"))) ||
+      (activeStatusFilter === "closed" && (status.includes("closed") || status.includes("wet") || status.includes("mud")));
+    return matchesCity && matchesSearch && matchesStatus;
   });
 
   const cities = [...new Set(visibleTrails.map((trail) => trail.city))];
@@ -232,6 +239,14 @@ filterButtons.forEach((button) => {
   button.addEventListener("click", () => {
     activeFilter = button.dataset.filter;
     filterButtons.forEach((item) => item.classList.toggle("active", item === button));
+    render();
+  });
+});
+
+statusFilterButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    activeStatusFilter = button.dataset.statusFilter;
+    statusFilterButtons.forEach((item) => item.classList.toggle("active", item === button));
     render();
   });
 });
