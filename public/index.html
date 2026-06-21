@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>North Texas MTB Trail Status</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div>
+        <p class="eyebrow">Trail system status</p>
+        <h1>North Texas MTB Trail Status</h1>
+      </div>
+      <nav aria-label="Manual status links">
+        <a href="https://fwmba.org/content.aspx?page_id=22&club_id=579686&module_id=514595">FWMBA</a>
+        <a href="https://www.facebook.com/WMBCTX">WMBCTX</a>
+        <a href="https://www.trailforks.com/region/tyler/">Tyler Trailforks</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="controls" aria-label="Trail filters">
+        <div class="search-wrap">
+          <label for="trail-search">Search trails</label>
+          <input id="trail-search" type="search" placeholder="Filter by trail or city">
+        </div>
+        <div class="segments" role="group" aria-label="Filter by area">
+          <button class="active" type="button" data-filter="all">All</button>
+          <button type="button" data-filter="Weatherford">Weatherford</button>
+          <button type="button" data-filter="Fort Worth">Fort Worth</button>
+          <button type="button" data-filter="Tyler">Tyler</button>
+        </div>
+      </section>
+
+      <section id="trail-groups" class="trail-groups" aria-live="polite"></section>
+
+      <section class="manual-checks" aria-labelledby="manual-heading">
+        <h2 id="manual-heading">Manual Status Sources</h2>
+        <a href="https://fwmba.org/content.aspx?page_id=22&club_id=579686&module_id=514595">
+          <span>FWMBA Trail Status</span>
+          <span>fwmba.org</span>
+        </a>
+        <a href="https://www.facebook.com/WMBCTX">
+          <span>WMBCTX Facebook Page</span>
+          <span>facebook.com/WMBCTX</span>
+        </a>
+        <a href="https://www.trailforks.com/region/tyler/">
+          <span>Tyler Region Trailforks</span>
+          <span>trailforks.com/region/tyler</span>
+        </a>
+      </section>
+    </main>
+
+    <script src="/script.js"></script>
+  </body>
+</html>
