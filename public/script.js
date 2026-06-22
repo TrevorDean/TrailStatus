@@ -144,7 +144,7 @@ const trails = [
   {
     key: "big-cedar",
     city: "Dallas",
-    subsection: "South Dallas",
+    subsection: "South Dallas Region",
     name: "Big Cedar Wilderness Trails",
     statusArea: "Big Cedar Wilderness Trails",
     statusType: "Riding area",
@@ -169,7 +169,7 @@ const trails = [
   {
     key: "boulder-park",
     city: "Dallas",
-    subsection: "South Dallas",
+    subsection: "South Dallas Region",
     name: "Boulder Park",
     statusArea: "Boulder Park",
     statusType: "Riding area",
@@ -178,7 +178,7 @@ const trails = [
   {
     key: "cedar-hill-state-park",
     city: "Dallas",
-    subsection: "South Dallas",
+    subsection: "South Dallas Region",
     name: "Cedar Hill State Park",
     statusArea: "Cedar Hill State Park",
     statusType: "Riding area",
@@ -260,7 +260,7 @@ const trails = [
   {
     key: "goat-island-preserve",
     city: "Dallas",
-    subsection: "South Dallas",
+    subsection: "South Dallas Region",
     name: "Goat Island Preserve",
     statusArea: "Goat Island Preserve",
     statusType: "Riding area",
@@ -269,7 +269,7 @@ const trails = [
   {
     key: "hachie-mtb-trail",
     city: "Dallas",
-    subsection: "South Dallas",
+    subsection: "South Dallas Region",
     name: "Hachie MTB Trail",
     statusArea: "Hachie MTB Trail",
     statusType: "Riding area",
@@ -342,7 +342,7 @@ const trails = [
   {
     key: "oak-cliff-nature-preserve",
     city: "Dallas",
-    subsection: "South Dallas",
+    subsection: "South Dallas Region",
     name: "Oak Cliff Nature Preserve",
     statusArea: "Oak Cliff Nature Preserve",
     statusType: "Riding area",
@@ -351,7 +351,7 @@ const trails = [
   {
     key: "paul-dryer-preserve",
     city: "Dallas",
-    subsection: "South Dallas",
+    subsection: "South Dallas Region",
     name: "Paul S. Dryer Preserve at Windmill Hill",
     statusArea: "Paul S. Dryer Preserve at Windmill Hill",
     statusType: "Riding area",
@@ -424,7 +424,7 @@ const trails = [
   {
     key: "wildcat-ranch",
     city: "Dallas",
-    subsection: "South Dallas",
+    subsection: "South Dallas Region",
     name: "Wildcat Ranch",
     statusArea: "Wildcat Ranch",
     statusType: "Riding area",
@@ -517,7 +517,7 @@ function render() {
               <span>Status</span>
               <span>Updated</span>
               <span>City</span>
-              <span>LTA</span>
+              <span>Trail Org</span>
               <span>Source</span>
             </div>
             <div class="trail-list">${mainHtml}${subsectionsHtml}</div>
