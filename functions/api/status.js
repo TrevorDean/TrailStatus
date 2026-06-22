@@ -18,6 +18,18 @@ const sources = [
     url: "https://www.trailforks.com/trails/trinity-track-green-loop/"
   },
   {
+    key: "western-heritage-park",
+    name: "Western Heritage Park",
+    type: "trail",
+    url: "https://www.trailforks.com/trails/western-heritage-park-green-trail/"
+  },
+  {
+    key: "the-pit",
+    name: "The Pit",
+    type: "region",
+    url: "https://www.trailforks.com/region/the-pit-trails/"
+  },
+  {
     key: "chisenhall",
     name: "Chisenhall",
     type: "region",

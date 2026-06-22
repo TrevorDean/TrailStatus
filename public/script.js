@@ -28,6 +28,23 @@ const trails = [
     sourceUrl: "https://www.trailforks.com/region/willow-park/"
   },
   {
+    key: "western-heritage-park",
+    city: "Weatherford",
+    name: "Western Heritage Park",
+    statusArea: "Western Heritage Park Green Trail",
+    statusType: "Trail status",
+    url: "https://www.trailforks.com/trails/western-heritage-park-green-trail/",
+    sourceUrl: "https://www.trailforks.com/trails/western-heritage-park-green-trail/reports/"
+  },
+  {
+    key: "the-pit",
+    city: "Weatherford",
+    name: "The Pit",
+    statusArea: "The Pit Trails",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/the-pit-trails/"
+  },
+  {
     key: "chisenhall",
     city: "Fort Worth",
     name: "Chisenhall",
