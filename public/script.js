@@ -517,6 +517,7 @@ function render() {
               <span>Status</span>
               <span>Updated</span>
               <span>City</span>
+              <span>LTA</span>
               <span>Source</span>
             </div>
             <div class="trail-list">${mainHtml}${subsectionsHtml}</div>
@@ -543,6 +544,7 @@ function renderRow(trail) {
       <span class="status-pill ${statusClass}">${status}</span>
       <span class="status-updated">${updated}</span>
       <span class="trail-city">${statuses[trail.key]?.city || trail.city}</span>
+      <span class="trail-lta">${statuses[trail.key]?.lta || ""}</span>
       <a class="status-link" href="${statusUrl}">${linkText}</a>
     </article>
   `;
