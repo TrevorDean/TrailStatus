@@ -96,7 +96,8 @@ async function fetchStatus(source) {
     const html = await response.text();
     const parsed = source.type === "trail" ? parseTrailStatus(html) : parseRegionStatus(html);
     const city = parseCity(html);
-    return { ...source, ...parsed, ...(city ? { city } : {}) };
+    const lta = parseLTA(html);
+    return { ...source, ...parsed, ...(city ? { city } : {}), ...(lta ? { lta } : {}) };
   } catch (error) {
     return { ...source, status: "Unavailable", detail: error.message, updated: "" };
   }
@@ -133,6 +134,13 @@ function parseTrailStatus(html) {
   const reportMatch = text.match(/Trail Reports\s+status date description\s+[^#]+?\s+(Open|Closed)\.?\s*([^#]*)/i);
   if (reportMatch) return { status: normalizeStatus(reportMatch[1]), updated: "", detail: clean(reportMatch[2] || "Trail report fallback") };
   return { status: "Unknown", updated: "", detail: "Status not found" };
+}
+
+function parseLTA(html) {
+  const text = toText(html);
+  const match = text.match(/Local Trail Association\s+(.*?)\s+(?:Trail Reports|Nearby Regions|Latest Conditions|Sponsor)/i);
+  if (match) return clean(match[1]);
+  return "";
 }
 
 function parseCity(html) {
