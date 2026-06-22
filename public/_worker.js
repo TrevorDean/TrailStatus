@@ -348,9 +348,15 @@ export default {
 
 async function handleStatus(env) {
   if (env.TRAIL_CACHE) {
-    const cached = await env.TRAIL_CACHE.get(CACHE_KEY, { type: "json" });
-    if (cached) {
-      return Response.json(cached, {
+    const [part1, part2] = await Promise.all([
+      env.TRAIL_CACHE.get("trail_statuses_1", { type: "json" }),
+      env.TRAIL_CACHE.get("trail_statuses_2", { type: "json" })
+    ]);
+
+    if (part1 || part2) {
+      const statuses = { ...(part1?.statuses || {}), ...(part2?.statuses || {}) };
+      const updatedAt = [part1?.updatedAt, part2?.updatedAt].filter(Boolean).sort().pop();
+      return Response.json({ updatedAt, statuses }, {
         headers: { "Cache-Control": "public, max-age=60" }
       });
     }
@@ -358,9 +364,6 @@ async function handleStatus(env) {
 
   // Cold start — KV not yet populated, fetch directly
   const data = await fetchAllStatuses();
-  if (env.TRAIL_CACHE) {
-    env.TRAIL_CACHE.put(CACHE_KEY, JSON.stringify(data)).catch(() => {});
-  }
   return Response.json(data, {
     headers: { "Cache-Control": "public, max-age=60" }
   });

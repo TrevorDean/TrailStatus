@@ -1,4 +1,4 @@
-const sources = [
+const SOURCES_1 = [
   { key: "quanah-hill", type: "region", url: "https://www.trailforks.com/region/quanah-hill-19635/" },
   { key: "parks-of-aledo", type: "region", url: "https://www.trailforks.com/region/parks-of-aledo/" },
   { key: "trinity-track", type: "trail", url: "https://www.trailforks.com/trails/trinity-track-green-loop/" },
@@ -28,7 +28,10 @@ const sources = [
   { key: "frisco-northwest-community-park", type: "region", url: "https://www.trailforks.com/region/frisco-northwest-community-park/" },
   { key: "goat-island-preserve", type: "region", url: "https://www.trailforks.com/region/goat-island-preserve-33774/" },
   { key: "hachie-mtb-trail", type: "region", url: "https://www.trailforks.com/region/hachie-mtb-trail-28103/" },
-  { key: "harry-moss-park", type: "region", url: "https://www.trailforks.com/region/harry-moss-park-22007/" },
+  { key: "harry-moss-park", type: "region", url: "https://www.trailforks.com/region/harry-moss-park-22007/" }
+];
+
+const SOURCES_2 = [
   { key: "horseshoe", type: "region", url: "https://www.trailforks.com/region/horseshoe-13746/" },
   { key: "katie-jackson-park-dorba", type: "region", url: "https://www.trailforks.com/region/katie-jackson-park-dorba-trail/" },
   { key: "katie-jackson-park-skillpark", type: "region", url: "https://www.trailforks.com/region/katie-jackson-park-skillpark-45471/" },
@@ -62,7 +65,11 @@ const fetchHeaders = {
 
 export default {
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(refreshCache(env));
+    if (event.cron === "*/5 * * * *") {
+      ctx.waitUntil(refreshBatch(env, SOURCES_1, "trail_statuses_1"));
+    } else {
+      ctx.waitUntil(refreshBatch(env, SOURCES_2, "trail_statuses_2"));
+    }
   },
 
   async fetch(request, env, ctx) {
@@ -70,7 +77,7 @@ export default {
   }
 };
 
-async function refreshCache(env) {
+async function refreshBatch(env, sources, cacheKey) {
   const results = [];
   for (const source of sources) {
     results.push(await fetchStatus(source));
@@ -79,7 +86,7 @@ async function refreshCache(env) {
     updatedAt: new Date().toISOString(),
     statuses: Object.fromEntries(results.map((r) => [r.key, r]))
   };
-  await env.TRAIL_CACHE.put("trail_statuses", JSON.stringify(data));
+  await env.TRAIL_CACHE.put(cacheKey, JSON.stringify(data));
 }
 
 async function fetchStatus(source) {
