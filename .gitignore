@@ -2,3 +2,5 @@ node_modules/
 .wrangler/
 Dorba.org/
 dorba.org.htm
+cron-worker/node_modules/
+cron-worker/.wrangler/
