@@ -326,7 +326,7 @@ export async function onRequestGet() {
     },
     {
       headers: {
-        "Cache-Control": "public, max-age=300"
+        "Cache-Control": "public, max-age=120"
       }
     }
   );
@@ -441,17 +441,22 @@ function parseTrailStatus(html) {
 }
 
 function parseCity(html) {
-  // Try title tag — handles both hyphen and em dash (&#8211; / &ndash; / –)
   const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
   if (titleMatch) {
-    const title = titleMatch[1].replace(/&#8211;|&ndash;/g, "–");
-    const cityMatch = title.match(/ [-–] ([^,|–]+),/);
+    const title = titleMatch[1]
+      .replace(/&#8211;|&ndash;/g, "–")
+      .replace(/&amp;/g, "&");
+    // Look for "City, Texas" or "City, TX" anywhere in the title
+    const cityMatch = title.match(/([A-Za-z][A-Za-z\s.'-]+),\s*(?:Texas|TX)\b/i);
     if (cityMatch) {
-      return clean(cityMatch[1]);
+      const city = clean(cityMatch[1]);
+      if (city.split(" ").length <= 5) {
+        return city;
+      }
     }
   }
 
-  // Fallback: og:description or meta description often contains "in City, Texas"
+  // Fallback: search meta description for "in City, Texas"
   const descMatch = html.match(/content="([^"]*\bin [^,]+, (?:Texas|TX)[^"]*)"[^>]*(?:name="description"|property="og:description")/i)
     || html.match(/(?:name="description"|property="og:description")[^>]*content="([^"]*\bin [^,]+, (?:Texas|TX)[^"]*)"/i);
   if (descMatch) {
