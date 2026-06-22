@@ -152,8 +152,8 @@ const sources = [
   {
     key: "erwin-park-skill-park",
     name: "Erwin Park Skill Park",
-    type: "region",
-    url: "https://www.trailforks.com/region/erwin-park-skill-park-54704/"
+    type: "trail",
+    url: "https://www.trailforks.com/trails/erwin-park-skills-area-530338/"
   },
   {
     key: "frisco-northwest-community-park",

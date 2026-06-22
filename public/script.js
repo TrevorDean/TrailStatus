@@ -246,7 +246,8 @@ const trails = [
     name: "Erwin Park Skill Park",
     statusArea: "Erwin Park Skill Park",
     statusType: "Riding area",
-    url: "https://www.trailforks.com/region/erwin-park-skill-park-54704/"
+    url: "https://www.trailforks.com/region/erwin-park-skill-park-54704/",
+    sourceUrl: "https://www.trailforks.com/trails/erwin-park-skills-area-530338/"
   },
   {
     key: "frisco-northwest-community-park",
