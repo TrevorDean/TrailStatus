@@ -441,13 +441,24 @@ function parseTrailStatus(html) {
 }
 
 function parseCity(html) {
+  // Try title tag — handles both hyphen and em dash (&#8211; / &ndash; / –)
   const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
   if (titleMatch) {
-    const cityMatch = titleMatch[1].match(/ - ([^,]+),/);
+    const title = titleMatch[1].replace(/&#8211;|&ndash;/g, "–");
+    const cityMatch = title.match(/ [-–] ([^,|–]+),/);
     if (cityMatch) {
       return clean(cityMatch[1]);
     }
   }
+
+  // Fallback: og:description or meta description often contains "in City, Texas"
+  const descMatch = html.match(/content="([^"]*\bin [^,]+, (?:Texas|TX)[^"]*)"[^>]*(?:name="description"|property="og:description")/i)
+    || html.match(/(?:name="description"|property="og:description")[^>]*content="([^"]*\bin [^,]+, (?:Texas|TX)[^"]*)"/i);
+  if (descMatch) {
+    const m = descMatch[1].match(/\bin ([^,]+), (?:Texas|TX)/i);
+    if (m) return clean(m[1]);
+  }
+
   return "";
 }
 
