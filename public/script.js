@@ -500,7 +500,7 @@ function renderRow(trail) {
       <a class="trail-name" href="${trail.url}" title="${sourceText}">${trail.name}</a>
       <span class="status-pill ${statusClass}">${status}</span>
       <span class="status-updated">${updated}</span>
-      <span class="trail-city">${trail.city}</span>
+      <span class="trail-city">${statuses[trail.key]?.city || trail.city}</span>
       <a class="status-link" href="${statusUrl}">${linkText}</a>
     </article>
   `;
