@@ -99,6 +99,302 @@ const trails = [
     url: "https://www.trailforks.com/region/the-woods-at-dunlop-park-72039/"
   },
   {
+    key: "arbor-hills",
+    city: "Dallas",
+    name: "Arbor Hills Nature Preserve Off Road Bike Trail",
+    statusArea: "Arbor Hills Nature Preserve Off Road Bike Trail",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/arbor-hills-nature-preserve-off-road-bike-trail/"
+  },
+  {
+    key: "barber-hills",
+    city: "Dallas",
+    name: "Barber Hills",
+    statusArea: "Barber Hills",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/barber-hills/"
+  },
+  {
+    key: "big-cedar",
+    city: "Dallas",
+    name: "Big Cedar Wilderness Trails",
+    statusArea: "Big Cedar Wilderness Trails",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/big-cedar-wilderness-trails/"
+  },
+  {
+    key: "binkley-park",
+    city: "Dallas",
+    name: "Binkley Park",
+    statusArea: "Binkley Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/binkley-park-24408/"
+  },
+  {
+    key: "bonham-state-park",
+    city: "Dallas",
+    name: "Bonham State Park",
+    statusArea: "Bonham State Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/bonham-state-park/"
+  },
+  {
+    key: "boulder-park",
+    city: "Dallas",
+    name: "Boulder Park",
+    statusArea: "Boulder Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/boulder-park-13783/"
+  },
+  {
+    key: "cedar-hill-state-park",
+    city: "Dallas",
+    name: "Cedar Hill State Park",
+    statusArea: "Cedar Hill State Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/cedar-hill-state-park-19031/"
+  },
+  {
+    key: "corinth-community-park",
+    city: "Dallas",
+    name: "Corinth Community Park",
+    statusArea: "Corinth Community Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/corinth-community-park-25637/"
+  },
+  {
+    key: "creekside-park-dorba",
+    city: "Dallas",
+    name: "Creekside Park DORBA Trail",
+    statusArea: "Creekside Park DORBA Trail",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/creekside-park-dorba-trail/"
+  },
+  {
+    key: "creekside-park-skillpark",
+    city: "Dallas",
+    name: "Creekside Park Skillpark",
+    statusArea: "Creekside Park Skillpark",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/creekside-park-skillpark/"
+  },
+  {
+    key: "cross-timbers",
+    city: "Dallas",
+    name: "Cross Timbers",
+    statusArea: "Cross Timbers",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/cross-timbers/"
+  },
+  {
+    key: "dinosaur-valley-state-park",
+    city: "Dallas",
+    name: "Dinosaur Valley State Park",
+    statusArea: "Dinosaur Valley State Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/dinosaur-valley-state-park/"
+  },
+  {
+    key: "eisenhower-state-park",
+    city: "Dallas",
+    name: "Eisenhower State Park",
+    statusArea: "Eisenhower State Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/eisenhower-state-park-23481/"
+  },
+  {
+    key: "erwin-park",
+    city: "Dallas",
+    name: "Erwin Park",
+    statusArea: "Erwin Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/erwin-park/"
+  },
+  {
+    key: "erwin-park-skill-park",
+    city: "Dallas",
+    name: "Erwin Park Skill Park",
+    statusArea: "Erwin Park Skill Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/erwin-park-skill-park-54704/"
+  },
+  {
+    key: "frisco-northwest-community-park",
+    city: "Dallas",
+    name: "Frisco Northwest Community Park",
+    statusArea: "Frisco Northwest Community Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/frisco-northwest-community-park/"
+  },
+  {
+    key: "goat-island-preserve",
+    city: "Dallas",
+    name: "Goat Island Preserve",
+    statusArea: "Goat Island Preserve",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/goat-island-preserve-33774/"
+  },
+  {
+    key: "hachie-mtb-trail",
+    city: "Dallas",
+    name: "Hachie MTB Trail",
+    statusArea: "Hachie MTB Trail",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/hachie-mtb-trail-28103/"
+  },
+  {
+    key: "harry-moss-park",
+    city: "Dallas",
+    name: "Harry Moss Park",
+    statusArea: "Harry Moss Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/harry-moss-park-22007/"
+  },
+  {
+    key: "horseshoe",
+    city: "Dallas",
+    name: "Horseshoe",
+    statusArea: "Horseshoe",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/horseshoe-13746/"
+  },
+  {
+    key: "katie-jackson-park-dorba",
+    city: "Dallas",
+    name: "Katie Jackson Park DORBA Trail",
+    statusArea: "Katie Jackson Park DORBA Trail",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/katie-jackson-park-dorba-trail/"
+  },
+  {
+    key: "katie-jackson-park-skillpark",
+    city: "Dallas",
+    name: "Katie Jackson Park Skillpark",
+    statusArea: "Katie Jackson Park Skillpark",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/katie-jackson-park-skillpark-45471/"
+  },
+  {
+    key: "knob-hills",
+    city: "Dallas",
+    name: "Knob Hills",
+    statusArea: "Knob Hills",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/knob-hills-22005/"
+  },
+  {
+    key: "lb-houston-park",
+    city: "Dallas",
+    name: "L.B. Houston Park",
+    statusArea: "L.B. Houston Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/l-b-houston-park-22065/"
+  },
+  {
+    key: "mineola-nature-preserve",
+    city: "Dallas",
+    name: "Mineola Nature Preserve",
+    statusArea: "Mineola Nature Preserve",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/mineola-nature-preserve-greer-hill-mtb-trails/"
+  },
+  {
+    key: "northshore",
+    city: "Dallas",
+    name: "Northshore",
+    statusArea: "Northshore",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/northshore/"
+  },
+  {
+    key: "oak-cliff-nature-preserve",
+    city: "Dallas",
+    name: "Oak Cliff Nature Preserve",
+    statusArea: "Oak Cliff Nature Preserve",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/oak-cliff-nature-preserve/"
+  },
+  {
+    key: "paul-dryer-preserve",
+    city: "Dallas",
+    name: "Paul S. Dryer Preserve at Windmill Hill",
+    statusArea: "Paul S. Dryer Preserve at Windmill Hill",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/paul-s-dryer-preserve-at-windmill-hill/"
+  },
+  {
+    key: "pecan-grove-park",
+    city: "Dallas",
+    name: "Pecan Grove Park",
+    statusArea: "Pecan Grove Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/pecan-grove-park/"
+  },
+  {
+    key: "ray-roberts-isle-du-bois",
+    city: "Dallas",
+    name: "Ray Roberts Lake Isle Du Bois Unit",
+    statusArea: "Ray Roberts Lake Isle Du Bois Unit",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/ray-roberts-lake-isle-du-bois-unit/"
+  },
+  {
+    key: "ray-roberts-johnson-branch",
+    city: "Dallas",
+    name: "Ray Roberts Lake Johnson Branch Unit",
+    statusArea: "Ray Roberts Lake Johnson Branch Unit",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/ray-roberts-lake-johnson-branch-unit-13751/"
+  },
+  {
+    key: "river-legacy-park",
+    city: "Dallas",
+    name: "River Legacy Park",
+    statusArea: "River Legacy Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/river-legacy-park/"
+  },
+  {
+    key: "rowlett-creek-preserve",
+    city: "Dallas",
+    name: "Rowlett Creek Preserve",
+    statusArea: "Rowlett Creek Preserve",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/rowlett-creek-preserve-19612/"
+  },
+  {
+    key: "sister-grove-park",
+    city: "Dallas",
+    name: "Sister Grove Park",
+    statusArea: "Sister Grove Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/sister-grove-park-24208/"
+  },
+  {
+    key: "squabble-creek",
+    city: "Dallas",
+    name: "Squabble Creek Mountain Bike Trails",
+    statusArea: "Squabble Creek Mountain Bike Trails",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/squabble-creek-mountain-bike-trails-33812/"
+  },
+  {
+    key: "waterloo-lake",
+    city: "Dallas",
+    name: "Waterloo Lake Regional Park",
+    statusArea: "Waterloo Lake Regional Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/waterloo-lake-regional-park-24406/"
+  },
+  {
+    key: "wildcat-ranch",
+    city: "Dallas",
+    name: "Wildcat Ranch",
+    statusArea: "Wildcat Ranch",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/wildcat-ranch/"
+  },
+  {
     key: "lindsey-park",
     city: "Tyler",
     name: "Lindsey Park",
@@ -197,7 +493,7 @@ function renderRow(trail) {
   const sourceText = trail.rid || trail.trailId ? `${trail.statusType}: ${trail.statusArea}` : "Manual lookup";
   const statusUrl = trail.sourceUrl || (trail.trailId ? trailStatusWidgetUrl(trail.trailId) : trail.url);
   const updated = current?.updated || current?.detail || "";
-  const linkText = hasWidgetStatus ? "Trailforks" : "Find status";
+  const linkText = statusUrl.includes("trailforks.com") ? "Trailforks" : "Find status";
 
   return `
     <article class="trail-row" data-city="${trail.city}" role="row">

@@ -66,6 +66,228 @@ const sources = [
     url: "https://www.trailforks.com/region/the-woods-at-dunlop-park-72039/"
   },
   {
+    key: "arbor-hills",
+    name: "Arbor Hills Nature Preserve Off Road Bike Trail",
+    type: "region",
+    url: "https://www.trailforks.com/region/arbor-hills-nature-preserve-off-road-bike-trail/"
+  },
+  {
+    key: "barber-hills",
+    name: "Barber Hills",
+    type: "region",
+    url: "https://www.trailforks.com/region/barber-hills/"
+  },
+  {
+    key: "big-cedar",
+    name: "Big Cedar Wilderness Trails",
+    type: "region",
+    url: "https://www.trailforks.com/region/big-cedar-wilderness-trails/"
+  },
+  {
+    key: "binkley-park",
+    name: "Binkley Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/binkley-park-24408/"
+  },
+  {
+    key: "bonham-state-park",
+    name: "Bonham State Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/bonham-state-park/"
+  },
+  {
+    key: "boulder-park",
+    name: "Boulder Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/boulder-park-13783/"
+  },
+  {
+    key: "cedar-hill-state-park",
+    name: "Cedar Hill State Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/cedar-hill-state-park-19031/"
+  },
+  {
+    key: "corinth-community-park",
+    name: "Corinth Community Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/corinth-community-park-25637/"
+  },
+  {
+    key: "creekside-park-dorba",
+    name: "Creekside Park DORBA Trail",
+    type: "region",
+    url: "https://www.trailforks.com/region/creekside-park-dorba-trail/"
+  },
+  {
+    key: "creekside-park-skillpark",
+    name: "Creekside Park Skillpark",
+    type: "region",
+    url: "https://www.trailforks.com/region/creekside-park-skillpark/"
+  },
+  {
+    key: "cross-timbers",
+    name: "Cross Timbers",
+    type: "region",
+    url: "https://www.trailforks.com/region/cross-timbers/"
+  },
+  {
+    key: "dinosaur-valley-state-park",
+    name: "Dinosaur Valley State Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/dinosaur-valley-state-park/"
+  },
+  {
+    key: "eisenhower-state-park",
+    name: "Eisenhower State Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/eisenhower-state-park-23481/"
+  },
+  {
+    key: "erwin-park",
+    name: "Erwin Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/erwin-park/"
+  },
+  {
+    key: "erwin-park-skill-park",
+    name: "Erwin Park Skill Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/erwin-park-skill-park-54704/"
+  },
+  {
+    key: "frisco-northwest-community-park",
+    name: "Frisco Northwest Community Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/frisco-northwest-community-park/"
+  },
+  {
+    key: "goat-island-preserve",
+    name: "Goat Island Preserve",
+    type: "region",
+    url: "https://www.trailforks.com/region/goat-island-preserve-33774/"
+  },
+  {
+    key: "hachie-mtb-trail",
+    name: "Hachie MTB Trail",
+    type: "region",
+    url: "https://www.trailforks.com/region/hachie-mtb-trail-28103/"
+  },
+  {
+    key: "harry-moss-park",
+    name: "Harry Moss Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/harry-moss-park-22007/"
+  },
+  {
+    key: "horseshoe",
+    name: "Horseshoe",
+    type: "region",
+    url: "https://www.trailforks.com/region/horseshoe-13746/"
+  },
+  {
+    key: "katie-jackson-park-dorba",
+    name: "Katie Jackson Park DORBA Trail",
+    type: "region",
+    url: "https://www.trailforks.com/region/katie-jackson-park-dorba-trail/"
+  },
+  {
+    key: "katie-jackson-park-skillpark",
+    name: "Katie Jackson Park Skillpark",
+    type: "region",
+    url: "https://www.trailforks.com/region/katie-jackson-park-skillpark-45471/"
+  },
+  {
+    key: "knob-hills",
+    name: "Knob Hills",
+    type: "region",
+    url: "https://www.trailforks.com/region/knob-hills-22005/"
+  },
+  {
+    key: "lb-houston-park",
+    name: "L.B. Houston Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/l-b-houston-park-22065/"
+  },
+  {
+    key: "mineola-nature-preserve",
+    name: "Mineola Nature Preserve",
+    type: "region",
+    url: "https://www.trailforks.com/region/mineola-nature-preserve-greer-hill-mtb-trails/"
+  },
+  {
+    key: "northshore",
+    name: "Northshore",
+    type: "region",
+    url: "https://www.trailforks.com/region/northshore/"
+  },
+  {
+    key: "oak-cliff-nature-preserve",
+    name: "Oak Cliff Nature Preserve",
+    type: "region",
+    url: "https://www.trailforks.com/region/oak-cliff-nature-preserve/"
+  },
+  {
+    key: "paul-dryer-preserve",
+    name: "Paul S. Dryer Preserve at Windmill Hill",
+    type: "region",
+    url: "https://www.trailforks.com/region/paul-s-dryer-preserve-at-windmill-hill/"
+  },
+  {
+    key: "pecan-grove-park",
+    name: "Pecan Grove Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/pecan-grove-park/"
+  },
+  {
+    key: "ray-roberts-isle-du-bois",
+    name: "Ray Roberts Lake Isle Du Bois Unit",
+    type: "region",
+    url: "https://www.trailforks.com/region/ray-roberts-lake-isle-du-bois-unit/"
+  },
+  {
+    key: "ray-roberts-johnson-branch",
+    name: "Ray Roberts Lake Johnson Branch Unit",
+    type: "region",
+    url: "https://www.trailforks.com/region/ray-roberts-lake-johnson-branch-unit-13751/"
+  },
+  {
+    key: "river-legacy-park",
+    name: "River Legacy Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/river-legacy-park/"
+  },
+  {
+    key: "rowlett-creek-preserve",
+    name: "Rowlett Creek Preserve",
+    type: "region",
+    url: "https://www.trailforks.com/region/rowlett-creek-preserve-19612/"
+  },
+  {
+    key: "sister-grove-park",
+    name: "Sister Grove Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/sister-grove-park-24208/"
+  },
+  {
+    key: "squabble-creek",
+    name: "Squabble Creek Mountain Bike Trails",
+    type: "region",
+    url: "https://www.trailforks.com/region/squabble-creek-mountain-bike-trails-33812/"
+  },
+  {
+    key: "waterloo-lake",
+    name: "Waterloo Lake Regional Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/waterloo-lake-regional-park-24406/"
+  },
+  {
+    key: "wildcat-ranch",
+    name: "Wildcat Ranch",
+    type: "region",
+    url: "https://www.trailforks.com/region/wildcat-ranch/"
+  },
+  {
     key: "lindsey-park",
     name: "Lindsey Park",
     type: "region",
