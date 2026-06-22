@@ -186,6 +186,18 @@ main {
   border-top: 1px solid var(--line);
 }
 
+.subsection-heading {
+  background: var(--bg);
+  border-top: 2px solid var(--line);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  min-width: 580px;
+  padding: 7px 12px 7px 16px;
+  text-transform: uppercase;
+}
+
 .trail-name {
   font-weight: 800;
   overflow: hidden;

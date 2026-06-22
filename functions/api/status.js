@@ -304,6 +304,24 @@ const sources = [
     name: "Tyler State Park",
     type: "region",
     url: "https://www.trailforks.com/region/tyler-state-park/"
+  },
+  {
+    key: "cameron-park",
+    name: "Cameron Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/cameron-park/"
+  },
+  {
+    key: "lacy-point",
+    name: "Lacy Point Nature Trail",
+    type: "region",
+    url: "https://www.trailforks.com/region/lacy-point-nature-trail-60140/"
+  },
+  {
+    key: "woodway-park",
+    name: "Woodway Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/woodway-park/"
   }
 ];
 
