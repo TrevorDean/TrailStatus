@@ -350,10 +350,12 @@ async function fetchStatus(source) {
 
     const html = await response.text();
     const parsed = source.type === "trail" ? parseTrailStatus(html) : parseRegionStatus(html);
+    const city = parseCity(html);
 
     return {
       ...source,
-      ...parsed
+      ...parsed,
+      ...(city ? { city } : {})
     };
   } catch (error) {
     return {
@@ -436,6 +438,17 @@ function parseTrailStatus(html) {
     updated: "",
     detail: "Status not found"
   };
+}
+
+function parseCity(html) {
+  const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
+  if (titleMatch) {
+    const cityMatch = titleMatch[1].match(/ - ([^,]+),/);
+    if (cityMatch) {
+      return clean(cityMatch[1]);
+    }
+  }
+  return "";
 }
 
 function toText(html) {
