@@ -351,13 +351,10 @@ async function fetchStatus(source) {
     const html = await response.text();
     const parsed = source.type === "trail" ? parseTrailStatus(html) : parseRegionStatus(html);
     const city = parseCity(html);
-    const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
-    const rawTitle = titleMatch ? titleMatch[1] : "NO_TITLE";
 
     return {
       ...source,
       ...parsed,
-      rawTitle,
       ...(city ? { city } : {})
     };
   } catch (error) {
@@ -444,29 +441,14 @@ function parseTrailStatus(html) {
 }
 
 function parseCity(html) {
+  // Trailforks title format: "Region Name, City Mountain Biking Trails | Trailforks"
   const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
   if (titleMatch) {
-    const title = titleMatch[1]
-      .replace(/&#8211;|&ndash;/g, "–")
-      .replace(/&amp;/g, "&");
-    // Look for "City, Texas" or "City, TX" anywhere in the title
-    const cityMatch = title.match(/([A-Za-z][A-Za-z\s.'-]+),\s*(?:Texas|TX)\b/i);
+    const cityMatch = titleMatch[1].match(/, ([^,|]+) Mountain Biking/i);
     if (cityMatch) {
-      const city = clean(cityMatch[1]);
-      if (city.split(" ").length <= 5) {
-        return city;
-      }
+      return clean(cityMatch[1]);
     }
   }
-
-  // Fallback: search meta description for "in City, Texas"
-  const descMatch = html.match(/content="([^"]*\bin [^,]+, (?:Texas|TX)[^"]*)"[^>]*(?:name="description"|property="og:description")/i)
-    || html.match(/(?:name="description"|property="og:description")[^>]*content="([^"]*\bin [^,]+, (?:Texas|TX)[^"]*)"/i);
-  if (descMatch) {
-    const m = descMatch[1].match(/\bin ([^,]+), (?:Texas|TX)/i);
-    if (m) return clean(m[1]);
-  }
-
   return "";
 }
 
