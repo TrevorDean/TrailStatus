@@ -325,41 +325,64 @@ const sources = [
   }
 ];
 
-const headers = {
+const fetchHeaders = {
   "User-Agent": "Mozilla/5.0 (compatible; TrailStatus/1.0)",
   "Accept": "text/html,application/xhtml+xml"
 };
 
-export async function onRequestGet() {
-  const results = [];
+const CACHE_KEY = "trail_statuses";
 
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    if (url.pathname === "/api/status") {
+      return handleStatus(env);
+    }
+    return env.ASSETS.fetch(request);
+  },
+
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(refreshCache(env));
+  }
+};
+
+async function handleStatus(env) {
+  if (env.TRAIL_CACHE) {
+    const cached = await env.TRAIL_CACHE.get(CACHE_KEY, { type: "json" });
+    if (cached) {
+      return Response.json(cached, {
+        headers: { "Cache-Control": "public, max-age=60" }
+      });
+    }
+  }
+
+  // Cold start — KV not yet populated, fetch directly
+  const data = await fetchAllStatuses();
+  if (env.TRAIL_CACHE) {
+    env.TRAIL_CACHE.put(CACHE_KEY, JSON.stringify(data)).catch(() => {});
+  }
+  return Response.json(data, {
+    headers: { "Cache-Control": "public, max-age=60" }
+  });
+}
+
+async function refreshCache(env) {
+  const data = await fetchAllStatuses();
+  await env.TRAIL_CACHE.put(CACHE_KEY, JSON.stringify(data));
+}
+
+async function fetchAllStatuses() {
+  const results = [];
   for (const source of sources) {
     results.push(await fetchStatus(source));
   }
-
-  return Response.json(
-    {
-      updatedAt: new Date().toISOString(),
-      statuses: Object.fromEntries(results.map((result) => [result.key, result]))
-    },
-    {
-      headers: {
-        "Cache-Control": "public, max-age=120"
-      }
-    }
-  );
+  return {
+    updatedAt: new Date().toISOString(),
+    statuses: Object.fromEntries(results.map((r) => [r.key, r]))
+  };
 }
 
 async function fetchStatus(source) {
-  if (source.type === "manual") {
-    return {
-      ...source,
-      status: "Manual Check",
-      detail: "No reliable Trailforks region status found.",
-      updated: ""
-    };
-  }
-
   try {
     const response = await fetchWithRetry(source.url);
     if (!response.ok) {
@@ -369,13 +392,10 @@ async function fetchStatus(source) {
     const html = await response.text();
     const parsed = source.type === "trail" ? parseTrailStatus(html) : parseRegionStatus(html);
     const city = parseCity(html);
-    const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
-    const rawTitle = titleMatch ? titleMatch[1] : "NO_TITLE";
 
     return {
       ...source,
       ...parsed,
-      rawTitle,
       ...(city ? { city } : {})
     };
   } catch (error) {
@@ -389,96 +409,60 @@ async function fetchStatus(source) {
 }
 
 async function fetchWithRetry(url) {
-  let response = await fetch(url, { headers });
-
+  let response = await fetch(url, { headers: fetchHeaders });
   if (response.status === 403 || response.status >= 500) {
     await delay(250);
-    response = await fetch(url, { headers });
+    response = await fetch(url, { headers: fetchHeaders });
   }
-
   return response;
 }
 
 function delay(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function parseRegionStatus(html) {
   const text = toText(html);
-  const match = text.match(/Region Status\s+([A-Za-z]+)(?:\s+as of\s+([^#]+?))?\s+Local Trail Association/i);
 
+  const match = text.match(/Region Status\s+([A-Za-z]+)(?:\s+as of\s+([^#]+?))?\s+Local Trail Association/i);
   if (match) {
-    return {
-      status: normalizeStatus(match[1]),
-      updated: clean(match[2] || ""),
-      detail: "Region Status"
-    };
+    return { status: normalizeStatus(match[1]), updated: clean(match[2] || ""), detail: "Region Status" };
   }
 
   const reportMatch = text.match(/Recent Trail Reports\s+status trail date condition info user\s+.+?\s+(Open|Closed)\.?\s*([^A-Z#]*)/i);
   if (reportMatch) {
-    return {
-      status: normalizeStatus(reportMatch[1]),
-      updated: "",
-      detail: clean(reportMatch[2] || "Recent trail report fallback")
-    };
+    return { status: normalizeStatus(reportMatch[1]), updated: "", detail: clean(reportMatch[2] || "Recent trail report fallback") };
   }
 
-  // Lenient fallback: just look for "Region Status" followed by a known status word
   const lenientMatch = text.match(/Region Status\s+(Open|Closed|Caution|Wet|Dry|Ideal|Variable|Prevalent Mud)/i);
   if (lenientMatch) {
-    return {
-      status: normalizeStatus(lenientMatch[1]),
-      updated: "",
-      detail: "Region Status"
-    };
+    return { status: normalizeStatus(lenientMatch[1]), updated: "", detail: "Region Status" };
   }
 
-  return {
-    status: "Unknown",
-    updated: "",
-    detail: "Status not found"
-  };
+  return { status: "Unknown", updated: "", detail: "Status not found" };
 }
 
 function parseTrailStatus(html) {
   const text = toText(html);
-  const match = text.match(/Status:\s+on\s+([^#]+?)\s+(Ideal|Dry|Very Dry|Wet|Variable|Prevalent Mud|Closed|Open|Unknown)\s+/i);
 
+  const match = text.match(/Status:\s+on\s+([^#]+?)\s+(Ideal|Dry|Very Dry|Wet|Variable|Prevalent Mud|Closed|Open|Unknown)\s+/i);
   if (match) {
-    return {
-      status: normalizeStatus(match[2]),
-      updated: clean(match[1]),
-      detail: "Trail status"
-    };
+    return { status: normalizeStatus(match[2]), updated: clean(match[1]), detail: "Trail status" };
   }
 
   const reportMatch = text.match(/Trail Reports\s+status date description\s+[^#]+?\s+(Open|Closed)\.?\s*([^#]*)/i);
   if (reportMatch) {
-    return {
-      status: normalizeStatus(reportMatch[1]),
-      updated: "",
-      detail: clean(reportMatch[2] || "Trail report fallback")
-    };
+    return { status: normalizeStatus(reportMatch[1]), updated: "", detail: clean(reportMatch[2] || "Trail report fallback") };
   }
 
-  return {
-    status: "Unknown",
-    updated: "",
-    detail: "Status not found"
-  };
+  return { status: "Unknown", updated: "", detail: "Status not found" };
 }
 
 function parseCity(html) {
-  // Trailforks title format: "Region Name, City Mountain Biking Trails | Trailforks"
   const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
   if (titleMatch) {
     const cityMatch = titleMatch[1].match(/, ([^,|]+) Mountain Biking/i);
-    if (cityMatch) {
-      return clean(cityMatch[1]);
-    }
+    if (cityMatch) return clean(cityMatch[1]);
   }
   return "";
 }
@@ -495,7 +479,7 @@ function toText(html) {
 }
 
 function normalizeStatus(value) {
-  return clean(value).replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return clean(value).replace(/\b\w/g, (l) => l.toUpperCase());
 }
 
 function clean(value) {
