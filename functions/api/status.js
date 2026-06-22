@@ -426,6 +426,16 @@ function parseRegionStatus(html) {
     };
   }
 
+  // Lenient fallback: just look for "Region Status" followed by a known status word
+  const lenientMatch = text.match(/Region Status\s+(Open|Closed|Caution|Wet|Dry|Ideal|Variable|Prevalent Mud)/i);
+  if (lenientMatch) {
+    return {
+      status: normalizeStatus(lenientMatch[1]),
+      updated: "",
+      detail: "Region Status"
+    };
+  }
+
   return {
     status: "Unknown",
     updated: "",
