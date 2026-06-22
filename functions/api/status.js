@@ -351,10 +351,13 @@ async function fetchStatus(source) {
     const html = await response.text();
     const parsed = source.type === "trail" ? parseTrailStatus(html) : parseRegionStatus(html);
     const city = parseCity(html);
+    const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
+    const rawTitle = titleMatch ? titleMatch[1] : "NO_TITLE";
 
     return {
       ...source,
       ...parsed,
+      rawTitle,
       ...(city ? { city } : {})
     };
   } catch (error) {
