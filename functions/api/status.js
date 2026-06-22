@@ -351,13 +351,10 @@ async function fetchStatus(source) {
     const html = await response.text();
     const parsed = source.type === "trail" ? parseTrailStatus(html) : parseRegionStatus(html);
     const city = parseCity(html);
-    const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
-    const rawTitle = titleMatch ? titleMatch[1] : "NO_TITLE";
 
     return {
       ...source,
       ...parsed,
-      rawTitle,
       ...(city ? { city } : {})
     };
   } catch (error) {
@@ -444,13 +441,21 @@ function parseTrailStatus(html) {
 }
 
 function parseCity(html) {
-  // Trailforks title format: "Region Name, City Mountain Biking Trails | Trailforks"
   const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
   if (titleMatch) {
-    const cityMatch = titleMatch[1].match(/, ([^,|]+) Mountain Biking/i);
-    if (cityMatch) {
-      return clean(cityMatch[1]);
-    }
+    const title = titleMatch[1];
+    // Region pages: "Region Name, City Mountain Biking Trails | Trailforks"
+    const regionMatch = title.match(/, ([^,|]+) Mountain Biking/i);
+    if (regionMatch) return clean(regionMatch[1]);
+    // Trail pages: "Trail Name Mountain Biking Trail - City, TX" or "- City" at end
+    const trailMatch = title.match(/Mountain Biking Trail\s+-\s+([^,|]+?)(?:,\s*(?:TX|Texas))?\s*$/i);
+    if (trailMatch) return clean(trailMatch[1]);
+  }
+  // Fallback: og:description/description typically has "in City, Texas" with alpha-only city
+  const descContent = html.match(/content="([^"]{20,500})"/gi) || [];
+  for (const attr of descContent) {
+    const m = attr.match(/\bin ([A-Za-z][A-Za-z\s'-]{1,25}),\s*(?:Texas|TX)\b/i);
+    if (m) return clean(m[1]);
   }
   return "";
 }
