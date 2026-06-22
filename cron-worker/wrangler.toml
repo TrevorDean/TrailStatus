@@ -7,4 +7,4 @@ binding = "TRAIL_CACHE"
 id = "84a3ba80c5fd4563b0bdb87f852a1993"
 
 [triggers]
-crons = ["*/5 * * * *"]
+crons = ["*/5 * * * *", "1-56/5 * * * *"]
