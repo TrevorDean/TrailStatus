@@ -139,7 +139,7 @@ function parseTrailStatus(html) {
 function parseLTA(html) {
   const text = toText(html);
   const match = text.match(/Local Trail Association\s+(.*?)\s+(?:Donate|Trail Reports|Nearby Regions|Latest Conditions|Sponsor|Weather|Photos|Stats|Follow|Subscribe|Maps|About|Recent)/i);
-  if (match) return clean(match[1]).slice(0, 20);
+  if (match) return clean(match[1]).slice(0, 55);
   return "";
 }
 
