@@ -162,11 +162,32 @@ function parseLTA(html) {
   return lta.slice(0, 55);
 }
 
+const BROAD_REGION_TERMS = /^(Texas|North Texas|Central Texas|South Texas|East Texas|West Texas|United States|USA|North America|DFW|Metroplex)$/i;
+
 function parseCity(html) {
+  // 1. Title: "Name, City Mountain Biking"
   const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
   if (titleMatch) {
-    const cityMatch = titleMatch[1].match(/, ([^,|]+) Mountain Biking/i);
-    if (cityMatch) return clean(cityMatch[1]);
+    const commaMatch = titleMatch[1].match(/,\s*([^,|]+?)\s+Mountain Biking/i);
+    if (commaMatch) {
+      const city = clean(commaMatch[1]);
+      if (!BROAD_REGION_TERMS.test(city)) return city;
+    }
+    // 2. Title: "Mountain Biking in City"
+    const inMatch = titleMatch[1].match(/Mountain Biking\s+in\s+([^,|<]+)/i);
+    if (inMatch) {
+      const city = clean(inMatch[1]);
+      if (!BROAD_REGION_TERMS.test(city)) return city;
+    }
+  }
+  // 3. Breadcrumb: parse /region/ links; city is the parent of the riding area
+  const breadcrumbMatch = html.match(/<[ou]l[^>]*(?:breadcrumb|crumb)[^>]*>([\s\S]*?)<\/[ou]l>/i);
+  if (breadcrumbMatch) {
+    const items = [...breadcrumbMatch[1].matchAll(/href="\/region\/([^"]+)"[^>]*>\s*([^<]+)\s*</gi)];
+    if (items.length >= 2) {
+      const city = clean(items[items.length - 2][2]);
+      if (!BROAD_REGION_TERMS.test(city)) return city;
+    }
   }
   return "";
 }
