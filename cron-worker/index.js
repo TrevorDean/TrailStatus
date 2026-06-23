@@ -126,12 +126,18 @@ function delay(ms) {
 
 function parseRegionStatus(html) {
   const text = toText(html);
+  // Full match: Region Status + optional date, terminated by Local Trail Association
   const match = text.match(/Region Status\s+([A-Za-z]+)(?:\s+as of\s+([^#]+?))?\s+Local Trail Association/i);
   if (match) return { status: normalizeStatus(match[1]), updated: clean(match[2] || ""), detail: "Region Status" };
+  // Lenient match: Region Status + optional date, terminated by any common section header
+  const lenientMatch = text.match(/Region Status\s+([A-Za-z]+)(?:\s+as of\s+([^#]+?))?\s+(?:Donate|Trail Reports|Nearby|Stats|Follow|Subscribe|Weather|Photos|About|Recent)/i);
+  if (lenientMatch) return { status: normalizeStatus(lenientMatch[1]), updated: clean(lenientMatch[2] || ""), detail: "Region Status" };
+  // Trail reports fallback
   const reportMatch = text.match(/Recent Trail Reports\s+status trail date condition info user\s+.+?\s+(Open|Closed)\.?\s*([^A-Z#]*)/i);
   if (reportMatch) return { status: normalizeStatus(reportMatch[1]), updated: "", detail: clean(reportMatch[2] || "Recent trail report fallback") };
-  const lenientMatch = text.match(/Region Status\s+(Open|Closed|Caution|Wet|Dry|Ideal|Variable|Prevalent Mud)/i);
-  if (lenientMatch) return { status: normalizeStatus(lenientMatch[1]), updated: "", detail: "Region Status" };
+  // Simple fallback
+  const simpleMatch = text.match(/Region Status\s+(Open|Closed|Caution|Wet|Dry|Ideal|Variable|Prevalent Mud)/i);
+  if (simpleMatch) return { status: normalizeStatus(simpleMatch[1]), updated: "", detail: "Region Status" };
   return { status: "Unknown", updated: "", detail: "Status not found" };
 }
 
