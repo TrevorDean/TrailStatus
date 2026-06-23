@@ -327,7 +327,7 @@ const trails = [
   },
   {
     key: "mineola-nature-preserve",
-    city: "Dallas",
+    city: "Tyler",
     name: "Mineola Nature Preserve",
     statusArea: "Mineola Nature Preserve",
     statusType: "Riding area",
