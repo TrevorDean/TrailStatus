@@ -472,6 +472,7 @@ const LTA_LINKS = {
   "FWMBA": "https://fwmba.org/",
   "WMBC": "https://www.wmbctx.com/",
   "WBC": "https://www.wacobicycleclub.com/",
+  "ETXTA": "https://www.trailforks.com/directory/10525/",
   "Burleson MTB Riders": "https://www.facebook.com/groups/579687176161531",
   "Waco Bicycle Club": "https://www.wacobicycleclub.com/"
 };
