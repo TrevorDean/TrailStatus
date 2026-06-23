@@ -601,7 +601,7 @@ function formatUpdated(updated) {
   const sixWeeksAgo = new Date();
   sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
   if (date < sixWeeksAgo) {
-    return `<span class="stale-date" tabindex="0" data-tooltip="No Recent Update. Check with trail org to confirm recent trail conditions.">${updated}</span>`;
+    return `<span class="stale-date" tabindex="0" data-tooltip="No recent update. Check with trail org for conditions or closures.">${updated}</span>`;
   }
   return updated;
 }
