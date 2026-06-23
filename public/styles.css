@@ -215,6 +215,12 @@ main {
   white-space: nowrap;
 }
 
+.stale-date {
+  border-bottom: 1px dashed var(--warn);
+  color: var(--warn);
+  cursor: help;
+}
+
 .status-updated {
   color: var(--muted);
   font-size: 0.9rem;

@@ -578,7 +578,9 @@ function formatUpdated(updated) {
   if (isNaN(date.getTime())) return updated;
   const sixWeeksAgo = new Date();
   sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
-  if (date < sixWeeksAgo) return "No Recent Update — Check with Trail Org";
+  if (date < sixWeeksAgo) {
+    return `<span class="stale-date" title="No Recent Update — Check with Trail Org">${updated}</span>`;
+  }
   return updated;
 }
 
