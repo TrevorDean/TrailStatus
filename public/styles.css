@@ -430,6 +430,17 @@ main {
     white-space: normal;
   }
 
+  /* Status pill: size to content only, don't stretch to column width */
+  .status-pill {
+    justify-self: end;
+  }
+
+  /* City text: align right to sit under the pill */
+  .trail-city {
+    justify-self: end;
+    text-align: right;
+  }
+
   /* Hide source link only; city stays visible */
   .status-link {
     display: none;
