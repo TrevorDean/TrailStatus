@@ -411,16 +411,20 @@ main {
     white-space: normal;
   }
 
-  /* Hide city and source link */
-  .trail-city,
+  /* Hide source link only; city stays visible */
   .status-link {
     display: none;
   }
 
-  /* Updated + Trail Org appear as second row, smaller */
+  /* Updated, City, Trail Org: smaller text in lower rows */
   .status-updated,
+  .trail-city,
   .trail-lta {
     font-size: 0.78rem;
+  }
+
+  .trail-city {
+    padding-left: 0;
   }
 
   /* Stale tooltip: tap to show; prevent right-edge overflow */
