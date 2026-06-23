@@ -427,6 +427,12 @@ main {
     padding-left: 0;
   }
 
+  .status-updated::before {
+    content: "Updated: ";
+    color: var(--muted);
+    font-weight: 700;
+  }
+
   .trail-city::before {
     content: "City: ";
     color: var(--muted);
