@@ -193,6 +193,7 @@ main {
 
 .trail-heading span:nth-child(2) {
   text-align: center;
+  transform: translateX(-12px);
 }
 
 .trail-heading span:nth-last-child(2) {
