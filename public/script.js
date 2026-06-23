@@ -503,6 +503,12 @@ groupsEl.addEventListener("click", (e) => {
   }
 });
 
+document.querySelector("main").addEventListener("click", (e) => {
+  const h2 = e.target.closest(".manual-checks h2");
+  if (!h2) return;
+  h2.closest(".manual-checks").classList.toggle("collapsed");
+});
+
 function trailStatusWidgetUrl(trailId) {
   const params = new URLSearchParams({
     trailid: trailId,
