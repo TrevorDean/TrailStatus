@@ -427,6 +427,18 @@ main {
     padding-left: 0;
   }
 
+  .trail-city::before {
+    content: "City: ";
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .trail-lta::before {
+    content: "Org: ";
+    color: var(--muted);
+    font-weight: 700;
+  }
+
   /* Stale tooltip: tap to show; prevent right-edge overflow */
   .stale-date::after {
     max-width: 220px;
