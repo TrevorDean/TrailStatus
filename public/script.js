@@ -351,6 +351,7 @@ const trails = [
     name: "Oak Cliff Nature Preserve",
     statusArea: "Oak Cliff Nature Preserve",
     statusType: "Riding area",
+    updatedNote: "This trail stays open in all weather conditions.",
     url: "https://www.trailforks.com/region/oak-cliff-nature-preserve/"
   },
   {
@@ -587,7 +588,7 @@ function renderRow(trail) {
     <article class="trail-row" data-city="${trail.city}" role="row">
       <a class="trail-name" href="${trail.url}" title="${sourceText}">${trail.name}</a>
       <span class="status-pill ${statusClass}">${status}</span>
-      <span class="status-updated">${updated}</span>
+      <span class="status-updated">${trail.updatedNote ? `<span class="updated-note" tabindex="0" data-tooltip="${trail.updatedNote}">${updated}</span>` : updated}</span>
       <span class="trail-city">${statuses[trail.key]?.city || trail.city}</span>
       <span class="trail-lta">${renderLTA(statuses[trail.key]?.lta || trail.lta || "Unknown")}</span>
       <a class="status-link" href="${statusUrl}">${linkText}</a>
