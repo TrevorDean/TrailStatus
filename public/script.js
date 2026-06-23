@@ -483,7 +483,7 @@ const groupsEl = document.querySelector("#trail-groups");
 const searchEl = document.querySelector("#trail-search");
 const filterButtons = [...document.querySelectorAll("[data-filter]")];
 const statusFilterButtons = [...document.querySelectorAll("[data-status-filter]")];
-let activeFilter = "all";
+let activeFilters = new Set();
 let activeStatusFilter = "all";
 let statuses = {};
 const collapsedSections = new Set();
@@ -519,7 +519,7 @@ function trailStatusWidgetUrl(trailId) {
 function render() {
   const search = searchEl.value.trim().toLowerCase();
   const visibleTrails = trails.filter((trail) => {
-    const matchesCity = activeFilter === "all" || trail.city === activeFilter;
+    const matchesCity = activeFilters.size === 0 || activeFilters.has(trail.city);
     const matchesSearch = `${trail.city} ${trail.name} ${trail.statusArea}`.toLowerCase().includes(search);
     const status = (statuses[trail.key]?.status || "").toLowerCase();
     const matchesStatus =
@@ -650,8 +650,22 @@ async function loadStatuses() {
 
 filterButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    activeFilter = button.dataset.filter;
-    filterButtons.forEach((item) => item.classList.toggle("active", item === button));
+    const filter = button.dataset.filter;
+    if (filter === "all") {
+      activeFilters.clear();
+      collapsedSections.clear();
+    } else {
+      if (activeFilters.has(filter)) {
+        activeFilters.delete(filter);
+      } else {
+        activeFilters.add(filter);
+        collapsedSections.delete(filter);
+      }
+    }
+    filterButtons.forEach((btn) => {
+      const f = btn.dataset.filter;
+      btn.classList.toggle("active", f === "all" ? activeFilters.size === 0 : activeFilters.has(f));
+    });
     render();
   });
 });
