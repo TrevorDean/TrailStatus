@@ -579,7 +579,7 @@ function formatUpdated(updated) {
   const sixWeeksAgo = new Date();
   sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
   if (date < sixWeeksAgo) {
-    return `<span class="stale-date" title="No Recent Update — Check with Trail Org">${updated}</span>`;
+    return `<span class="stale-date" data-tooltip="No Recent Update — Check with Trail Org">${updated}</span>`;
   }
   return updated;
 }
