@@ -473,6 +473,7 @@ const SECTION_DISPLAY = {
 };
 
 const LTA_LINKS = {
+  "Barber Hills Trail Association": "https://visitparistexas.com/cycling-destination/",
   "DORBA": "https://dorba.org/",
   "Dallas Off Road Bicycle Association": "https://dorba.org/",
   "FWMBA": "https://fwmba.org/",
