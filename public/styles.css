@@ -254,7 +254,8 @@ main {
   z-index: 10;
 }
 
-.stale-date:hover::after {
+.stale-date:hover::after,
+.stale-date:focus::after {
   opacity: 1;
 }
 
@@ -362,24 +363,80 @@ main {
 }
 
 @media (max-width: 760px) {
-  .site-header,
-  .manual-checks a {
+  /* Header */
+  .site-header {
     align-items: stretch;
     display: grid;
+    min-height: 0;
+    padding: 24px 16px;
   }
 
+  .site-header nav {
+    justify-content: start;
+  }
+
+  /* Controls */
   .controls {
     grid-template-columns: 1fr;
   }
 
-  .site-header nav,
   .segments {
-    justify-content: start;
-  }
-
-  .segments {
-    overflow-x: auto;
     flex-wrap: nowrap;
+    justify-content: start;
+    overflow-x: auto;
   }
 
+  /* Trail table: 2-column, 2-row card layout per trail */
+  .trail-heading {
+    grid-template-columns: 1fr auto;
+  }
+
+  /* Hide Updated, City, Trail Org, Source headings — keep Trail Name + Status */
+  .trail-heading span:nth-child(n+3) {
+    display: none;
+  }
+
+  .trail-row {
+    align-items: start;
+    gap: 2px 8px;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    min-height: 0;
+    padding: 10px 12px 10px 16px;
+  }
+
+  /* Trail name: allow wrapping on small screens */
+  .trail-name {
+    white-space: normal;
+  }
+
+  /* Hide city and source link */
+  .trail-city,
+  .status-link {
+    display: none;
+  }
+
+  /* Updated + Trail Org appear as second row, smaller */
+  .status-updated,
+  .trail-lta {
+    font-size: 0.78rem;
+  }
+
+  /* Stale tooltip: tap to show; prevent right-edge overflow */
+  .stale-date::after {
+    max-width: 220px;
+    white-space: normal;
+  }
+
+  /* Org cards: stack name above links */
+  .org-card {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .manual-checks a {
+    align-items: stretch;
+    display: grid;
+  }
 }
