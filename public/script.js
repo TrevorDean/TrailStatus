@@ -244,6 +244,7 @@ const trails = [
   {
     key: "erwin-park-skill-park",
     city: "Dallas",
+    lta: "DORBA",
     name: "Erwin Park Skill Park",
     statusArea: "Erwin Park Skill Park",
     statusType: "Riding area",
@@ -459,6 +460,19 @@ const trails = [
 
 const SECTION_ORDER = ["Weatherford", "Fort Worth", "Tyler", "Dallas", "Waco"];
 
+const SECTION_DISPLAY = {
+  "Weatherford": "Weatherford Region",
+  "Fort Worth": "Fort Worth Region",
+  "Dallas": "Dallas Region"
+};
+
+const LTA_LINKS = {
+  "DORBA": "https://www.dorba.org/",
+  "Dallas Off Road Bicycle Association": "https://www.dorba.org/",
+  "Burleson MTB Riders": "https://www.facebook.com/groups/579687176161531",
+  "Waco Bicycle Club": "https://www.wacobicycleclub.com/"
+};
+
 const groupsEl = document.querySelector("#trail-groups");
 const searchEl = document.querySelector("#trail-search");
 const filterButtons = [...document.querySelectorAll("[data-filter]")];
@@ -511,8 +525,8 @@ function render() {
 
       return `
         <section class="city-section">
-          <h2>${city}</h2>
-          <div class="trail-table" role="table" aria-label="${city} trail statuses">
+          <h2>${SECTION_DISPLAY[city] || city}</h2>
+          <div class="trail-table" role="table" aria-label="${SECTION_DISPLAY[city] || city} trail statuses">
             <div class="trail-heading" role="row">
               <span>Trail Name</span>
               <span>Status</span>
@@ -545,10 +559,16 @@ function renderRow(trail) {
       <span class="status-pill ${statusClass}">${status}</span>
       <span class="status-updated">${updated}</span>
       <span class="trail-city">${statuses[trail.key]?.city || trail.city}</span>
-      <span class="trail-lta">${statuses[trail.key]?.lta || trail.lta || "Unknown"}</span>
+      <span class="trail-lta">${renderLTA(statuses[trail.key]?.lta || trail.lta || "Unknown")}</span>
       <a class="status-link" href="${statusUrl}">${linkText}</a>
     </article>
   `;
+}
+
+function renderLTA(lta) {
+  const url = LTA_LINKS[lta];
+  if (url) return `<a href="${url}" target="_blank" rel="noopener">${lta}</a>`;
+  return lta;
 }
 
 function formatUpdated(updated) {
