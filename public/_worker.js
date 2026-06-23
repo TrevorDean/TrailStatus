@@ -364,7 +364,7 @@ async function handleStatus(env) {
     if (part1 || part2) {
       const statuses = { ...(part1?.statuses || {}), ...(part2?.statuses || {}) };
       for (const s of Object.values(statuses)) {
-        if (s.lta && (s.lta.length > 55 || /please|consider/i.test(s.lta))) s.lta = "";
+        if (s.lta && (s.lta.length > 55 || /please|consider/i.test(s.lta) || s.lta === "Dallas Off Road Bicycle Association")) s.lta = "";
       }
       const updatedAt = [part1?.updatedAt, part2?.updatedAt].filter(Boolean).sort().pop();
       return Response.json({ updatedAt, statuses }, {
