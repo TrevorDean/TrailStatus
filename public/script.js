@@ -686,6 +686,18 @@ statusFilterButtons.forEach((button) => {
   });
 });
 
-searchEl.addEventListener("input", render);
+const searchClearEl = document.querySelector("#search-clear");
+
+searchEl.addEventListener("input", () => {
+  searchClearEl.classList.toggle("hidden", searchEl.value === "");
+  render();
+});
+
+searchClearEl.addEventListener("click", () => {
+  searchEl.value = "";
+  searchClearEl.classList.add("hidden");
+  searchEl.focus();
+  render();
+});
 render();
 loadStatuses();
