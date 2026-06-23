@@ -191,6 +191,10 @@ main {
   text-align: center;
 }
 
+.trail-heading span:nth-child(2) {
+  text-align: center;
+}
+
 .trail-heading span:nth-last-child(2) {
   padding-left: 12px;
 }
