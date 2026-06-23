@@ -356,7 +356,7 @@ async function handleStatus(env) {
     if (part1 || part2) {
       const statuses = { ...(part1?.statuses || {}), ...(part2?.statuses || {}) };
       for (const s of Object.values(statuses)) {
-        if (s.lta && s.lta.length > 20) s.lta = s.lta.slice(0, 20).trim();
+        if (s.lta && s.lta.length > 55) s.lta = s.lta.slice(0, 55).trim();
       }
       const updatedAt = [part1?.updatedAt, part2?.updatedAt].filter(Boolean).sort().pop();
       return Response.json({ updatedAt, statuses }, {
@@ -469,7 +469,7 @@ function parseTrailStatus(html) {
 function parseLTA(html) {
   const text = toText(html);
   const match = text.match(/Local Trail Association\s+(.*?)\s+(?:Donate|Trail Reports|Nearby Regions|Latest Conditions|Sponsor|Weather|Photos|Stats|Follow|Subscribe|Maps|About|Recent)/i);
-  if (match) return clean(match[1]).slice(0, 20);
+  if (match) return clean(match[1]).slice(0, 55);
   return "";
 }
 
