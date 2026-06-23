@@ -47,6 +47,7 @@ const trails = [
   {
     key: "chisenhall",
     city: "Fort Worth",
+    lta: "Burleson MTB Riders",
     name: "Chisenhall",
     statusArea: "Chisenhall",
     statusType: "Riding area",
@@ -535,7 +536,7 @@ function renderRow(trail) {
   const statusClass = statusClassFor(status);
   const sourceText = trail.rid || trail.trailId ? `${trail.statusType}: ${trail.statusArea}` : "Manual lookup";
   const statusUrl = trail.sourceUrl || (trail.trailId ? trailStatusWidgetUrl(trail.trailId) : trail.url);
-  const updated = current?.updated || current?.detail || "";
+  const updated = formatUpdated(current?.updated || "");
   const linkText = statusUrl.includes("trailforks.com") ? "Trailforks" : "Find status";
 
   return `
@@ -544,10 +545,21 @@ function renderRow(trail) {
       <span class="status-pill ${statusClass}">${status}</span>
       <span class="status-updated">${updated}</span>
       <span class="trail-city">${statuses[trail.key]?.city || trail.city}</span>
-      <span class="trail-lta">${statuses[trail.key]?.lta || ""}</span>
+      <span class="trail-lta">${statuses[trail.key]?.lta || trail.lta || "Unknown"}</span>
       <a class="status-link" href="${statusUrl}">${linkText}</a>
     </article>
   `;
+}
+
+function formatUpdated(updated) {
+  if (!updated) return "Unknown";
+  if (/^(today|yesterday|\d+\s+(minute|hour|day|week)s?)$/i.test(updated)) return updated;
+  const date = new Date(updated);
+  if (isNaN(date.getTime())) return updated;
+  const sixWeeksAgo = new Date();
+  sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
+  if (date < sixWeeksAgo) return "No Recent Update — Check with Trail Org";
+  return updated;
 }
 
 function statusClassFor(status) {
