@@ -219,7 +219,7 @@ const trails = [
   },
   {
     key: "dinosaur-valley-state-park",
-    city: "Dallas",
+    city: "Fort Worth",
     name: "Dinosaur Valley State Park",
     statusArea: "Dinosaur Valley State Park",
     statusType: "Riding area",
