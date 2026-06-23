@@ -274,6 +274,7 @@ const trails = [
   {
     key: "hachie-mtb-trail",
     city: "Dallas",
+    lta: "Hachie MTB Trail Riders",
     subsection: "South Dallas Region",
     name: "Hachie MTB Trail",
     statusArea: "Hachie MTB Trail",
@@ -481,6 +482,7 @@ const LTA_LINKS = {
   "WBC": "https://www.wacobicycleclub.com/",
   "ETXTA": "https://www.trailforks.com/directory/10525/",
   "Burleson MTB Riders": "https://www.facebook.com/groups/579687176161531",
+  "Hachie MTB Trail Riders": "https://www.facebook.com/groups/HachieMTB",
   "Waco Bicycle Club": "https://www.wacobicycleclub.com/"
 };
 
