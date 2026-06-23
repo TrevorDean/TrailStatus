@@ -180,14 +180,32 @@ function parseCity(html) {
       if (!BROAD_REGION_TERMS.test(city)) return city;
     }
   }
-  // 3. Breadcrumb: parse /region/ links; city is the parent of the riding area
-  const breadcrumbMatch = html.match(/<[ou]l[^>]*(?:breadcrumb|crumb)[^>]*>([\s\S]*?)<\/[ou]l>/i);
-  if (breadcrumbMatch) {
-    const items = [...breadcrumbMatch[1].matchAll(/href="\/region\/([^"]+)"[^>]*>\s*([^<]+)\s*</gi)];
-    if (items.length >= 2) {
+  // 3. JSON-LD structured data
+  const jsonLdBlocks = [...html.matchAll(/<script[^>]+type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)];
+  for (const block of jsonLdBlocks) {
+    try {
+      const data = JSON.parse(block[1]);
+      const city = data?.address?.addressLocality ||
+                   data?.containedInPlace?.name ||
+                   data?.location?.address?.addressLocality;
+      if (city && !BROAD_REGION_TERMS.test(clean(city))) return clean(city);
+    } catch (e) {}
+  }
+  // 4. Any ol/ul with 3+ /region/ links — likely the breadcrumb hierarchy
+  const lists = [...html.matchAll(/<[ou]l[^>]*>([\s\S]*?)<\/[ou]l>/gi)];
+  for (const list of lists) {
+    const items = [...list[1].matchAll(/href="\/region\/([^"]+)"[^>]*>\s*([^<]{2,50}?)\s*</gi)];
+    if (items.length >= 3) {
       const city = clean(items[items.length - 2][2]);
-      if (!BROAD_REGION_TERMS.test(city)) return city;
+      if (!BROAD_REGION_TERMS.test(city) && city.length >= 2) return city;
     }
+  }
+  // 5. Meta description: "biking in City, Texas"
+  const metaMatch = html.match(/content="([^"]*Mountain Biking[^"]*)"[^>]*(?:name="description"|property="og:description")/i) ||
+                    html.match(/(?:name="description"|property="og:description")[^>]*content="([^"]*Mountain Biking[^"]*)"/i);
+  if (metaMatch) {
+    const m = metaMatch[1].match(/(?:biking|trails?)\s+in\s+([A-Z][a-zA-Z\s]+?),?\s+Texas/i);
+    if (m && !BROAD_REGION_TERMS.test(clean(m[1]))) return clean(m[1]);
   }
   return "";
 }
