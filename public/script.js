@@ -20,6 +20,7 @@ const trails = [
   {
     key: "trinity-track",
     city: "Weatherford",
+    lta: "WMBC",
     name: "Trinity Track",
     statusArea: "Trinity Track Green Loop",
     statusType: "Trail status",
@@ -30,6 +31,7 @@ const trails = [
   {
     key: "western-heritage-park",
     city: "Weatherford",
+    lta: "WMBC",
     name: "Western Heritage Park",
     statusArea: "Western Heritage Park Green Trail",
     statusType: "Trail status",
