@@ -464,6 +464,7 @@ const SECTION_ORDER = ["Weatherford", "Fort Worth", "Tyler", "Dallas", "Waco"];
 const SECTION_DISPLAY = {
   "Weatherford": "Weatherford Region",
   "Fort Worth": "Fort Worth Region",
+  "Tyler": "Tyler Region",
   "Dallas": "Dallas Region"
 };
 
