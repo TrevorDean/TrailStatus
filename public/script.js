@@ -336,6 +336,7 @@ const trails = [
   {
     key: "northshore",
     city: "Dallas",
+    lta: "DORBA",
     name: "Northshore",
     statusArea: "Northshore",
     statusType: "Riding area",
