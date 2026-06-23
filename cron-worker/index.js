@@ -129,6 +129,9 @@ function parseRegionStatus(html) {
   // Full match: Region Status + optional date, terminated by Local Trail Association
   const match = text.match(/Region Status\s+([A-Za-z]+)(?:\s+as of\s+([^#]+?))?\s+Local Trail Association/i);
   if (match) return { status: normalizeStatus(match[1]), updated: clean(match[2] || ""), detail: "Region Status" };
+  // Date-anchored match: "Region Status [status] as of [Month Day, Year]" — no terminator needed
+  const dateMatch = text.match(/Region Status\s+([A-Za-z]+)\s+as of\s+([A-Za-z]+\.?\s+\d+,?\s*\d{4})/i);
+  if (dateMatch) return { status: normalizeStatus(dateMatch[1]), updated: clean(dateMatch[2]), detail: "Region Status" };
   // Lenient match: Region Status + optional date, terminated by any common section header
   const lenientMatch = text.match(/Region Status\s+([A-Za-z]+)(?:\s+as of\s+([^#]+?))?\s+(?:Donate|Trail Reports|Nearby|Stats|Follow|Subscribe|Weather|Photos|About|Recent)/i);
   if (lenientMatch) return { status: normalizeStatus(lenientMatch[1]), updated: clean(lenientMatch[2] || ""), detail: "Region Status" };
