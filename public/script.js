@@ -486,6 +486,22 @@ const statusFilterButtons = [...document.querySelectorAll("[data-status-filter]"
 let activeFilter = "all";
 let activeStatusFilter = "all";
 let statuses = {};
+const collapsedSections = new Set();
+
+groupsEl.addEventListener("click", (e) => {
+  const h2 = e.target.closest("h2");
+  if (!h2) return;
+  const section = h2.closest(".city-section");
+  if (!section) return;
+  const city = section.dataset.city;
+  if (collapsedSections.has(city)) {
+    collapsedSections.delete(city);
+    section.classList.remove("collapsed");
+  } else {
+    collapsedSections.add(city);
+    section.classList.add("collapsed");
+  }
+});
 
 function trailStatusWidgetUrl(trailId) {
   const params = new URLSearchParams({
@@ -530,7 +546,7 @@ function render() {
       }).join("");
 
       return `
-        <section class="city-section">
+        <section class="city-section${collapsedSections.has(city) ? " collapsed" : ""}" data-city="${city}">
           <h2>${SECTION_DISPLAY[city] || city}</h2>
           <div class="trail-table" role="table" aria-label="${SECTION_DISPLAY[city] || city} trail statuses">
             <div class="trail-heading" role="row">
