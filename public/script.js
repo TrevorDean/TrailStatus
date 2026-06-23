@@ -139,6 +139,7 @@ const trails = [
   {
     key: "barber-hills",
     city: "Dallas",
+    lta: "Barber Hills Trail Association",
     name: "Barber Hills",
     statusArea: "Barber Hills",
     statusType: "Riding area",
