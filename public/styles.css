@@ -381,9 +381,8 @@ main {
   }
 
   .segments {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: start;
-    overflow-x: auto;
   }
 
   /* Trail table: 2-column, 2-row card layout per trail */
