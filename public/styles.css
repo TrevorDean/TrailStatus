@@ -404,8 +404,10 @@ main {
     padding: 10px 12px 10px 16px;
   }
 
-  /* Trail name: allow wrapping on small screens */
+  /* Trail name: allow wrapping and indicate it's a link */
   .trail-name {
+    color: var(--accent);
+    text-decoration: underline;
     white-space: normal;
   }
 
