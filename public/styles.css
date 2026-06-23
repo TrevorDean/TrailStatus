@@ -134,8 +134,27 @@ main {
 }
 
 .city-section h2 {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
   font-size: 1.3rem;
+  gap: 8px;
   margin: 0 0 14px;
+  user-select: none;
+}
+
+.city-section h2::after {
+  content: "▾";
+  font-size: 1rem;
+  transition: transform 0.2s;
+}
+
+.city-section.collapsed h2::after {
+  transform: rotate(-90deg);
+}
+
+.city-section.collapsed .trail-table {
+  display: none;
 }
 
 .trail-table {
