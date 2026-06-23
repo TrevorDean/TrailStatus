@@ -145,7 +145,7 @@ main {
 
 .city-section h2::after {
   content: "▾";
-  font-size: 1rem;
+  font-size: 1.5rem;
   transition: transform 0.2s;
 }
 
@@ -322,8 +322,27 @@ main {
 }
 
 .manual-checks h2 {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
   font-size: 1.2rem;
+  gap: 8px;
   margin: 0;
+  user-select: none;
+}
+
+.manual-checks h2::after {
+  content: "▾";
+  font-size: 1.5rem;
+  transition: transform 0.2s;
+}
+
+.manual-checks.collapsed h2::after {
+  transform: rotate(-90deg);
+}
+
+.manual-checks.collapsed .org-card {
+  display: none;
 }
 
 .org-card {
