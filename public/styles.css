@@ -246,8 +246,6 @@ main {
 .status-updated {
   color: var(--muted);
   font-size: 0.9rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
