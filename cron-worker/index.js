@@ -155,10 +155,10 @@ function parseTrailStatus(html) {
 
 function parseLTA(html) {
   const text = toText(html);
-  const match = text.match(/Local Trail Association\s+(.*?)\s+(?:Please|Donate|Trail Reports|Nearby Regions|Latest Conditions|Sponsor|Weather|Photos|Stats|Follow|Subscribe|Maps|About|Recent)/i);
+  const match = text.match(/Local Trail Association\s+(.*?)\s+(?:Please|Donate|Donations|Trail Reports|Trail Conditions|Nearby Regions|Nearby|Latest Conditions|Conditions|Sponsor|Weather|Photos|Stats|Follow|Subscribe|Maps|About|Recent|Check|Contact|Events|Volunteer|Region Status)/i);
   if (!match) return "";
   let lta = match[1].replace(/\s*\([^)]*\)\s*/g, " ").trim();
-  if (/^(Donate|Trail|Nearby|Latest|Sponsor|Weather|Photos|Stats|Follow|Subscribe|Maps|About|Recent|Trail Karma)/i.test(lta)) return "";
+  if (/^(Donate|Trail|Nearby|Latest|Sponsor|Weather|Photos|Stats|Follow|Subscribe|Maps|About|Recent|Trail Karma|Check|Conditions|Contact|Events|Volunteer)/i.test(lta)) return "";
   return lta.slice(0, 55);
 }
 
