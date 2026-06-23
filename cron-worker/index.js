@@ -86,9 +86,15 @@ export default {
 };
 
 async function refreshBatch(env, sources, cacheKey) {
+  const old = await env.TRAIL_CACHE.get(cacheKey, { type: "json" });
+  const oldStatuses = old?.statuses || {};
   const results = [];
   for (const source of sources) {
-    results.push(await fetchStatus(source));
+    const result = await fetchStatus(source);
+    // Preserve city and lta from previous run if this fetch didn't return them
+    if (!result.city && oldStatuses[source.key]?.city) result.city = oldStatuses[source.key].city;
+    if (!result.lta && oldStatuses[source.key]?.lta) result.lta = oldStatuses[source.key].lta;
+    results.push(result);
   }
   const data = {
     updatedAt: new Date().toISOString(),
