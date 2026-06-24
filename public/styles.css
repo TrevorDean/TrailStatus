@@ -474,10 +474,10 @@ main {
 }
 
 .info-donate-btn,
-a.info-donate-btn {
+.info-dialog a.info-donate-btn {
   background: var(--accent);
   border-radius: 6px;
-  color: #fff;
+  color: #fff !important;
   display: inline-block;
   font-size: 0.9rem;
   font-weight: 700;
@@ -487,9 +487,8 @@ a.info-donate-btn {
 }
 
 .info-donate-btn:hover,
-a.info-donate-btn:hover {
+.info-dialog a.info-donate-btn:hover {
   background: var(--accent-strong);
-  color: #fff;
 }
 
 .info-attribution {
