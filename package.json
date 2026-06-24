@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "dev": "wrangler pages dev public --port 8788",
+    "dev": "wrangler pages dev public --port 8788 --remote",
     "deploy": "wrangler pages deploy public"
   },
   "devDependencies": {
