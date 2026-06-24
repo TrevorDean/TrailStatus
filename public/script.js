@@ -599,8 +599,8 @@ function render() {
   const sections = SECTION_ORDER.filter(city => visibleTrails.some(t => t.city === city));
 
   let favHtml = "";
-  if (favoritedTrails.size > 0) {
-    const favTrails = trails.filter(t => favoritedTrails.has(t.key));
+  const favTrails = visibleTrails.filter(t => favoritedTrails.has(t.key));
+  if (favTrails.length > 0) {
     const isCollapsed = collapsedSections.has("__favorites__");
     favHtml = `
       <section class="city-section favorites-section${isCollapsed ? " collapsed" : ""}" data-city="__favorites__">
