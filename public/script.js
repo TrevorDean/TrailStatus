@@ -484,7 +484,7 @@ const trails = [
   }
 ];
 
-const SECTION_ORDER = ["Weatherford", "Fort Worth", "Tyler", "Dallas", "Waco"];
+const SECTION_ORDER = ["Dallas", "Fort Worth", "Tyler", "Waco", "Weatherford"];
 const SUBSECTION_ORDER = ["North Dallas Region", "South Dallas Region", "East Dallas Region", "Far North Dallas Region"];
 
 const SECTION_DISPLAY = {
