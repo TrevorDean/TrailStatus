@@ -139,8 +139,7 @@ const trails = [
   },
   {
     key: "barber-hills",
-    city: "Dallas",
-    subsection: "Far North Dallas Region",
+    city: "Far North Region",
     lta: "Barber Hills Trail Association",
     name: "Barber Hills",
     statusArea: "Barber Hills",
@@ -158,8 +157,7 @@ const trails = [
   },
   {
     key: "binkley-park",
-    city: "Dallas",
-    subsection: "Far North Dallas Region",
+    city: "Far North Region",
     name: "Binkley Park",
     statusArea: "Binkley Park",
     statusType: "Riding area",
@@ -167,8 +165,7 @@ const trails = [
   },
   {
     key: "bonham-state-park",
-    city: "Dallas",
-    subsection: "Far North Dallas Region",
+    city: "Far North Region",
     name: "Bonham State Park",
     statusArea: "Bonham State Park",
     statusType: "Riding area",
@@ -219,8 +216,7 @@ const trails = [
   },
   {
     key: "cross-timbers",
-    city: "Dallas",
-    subsection: "Far North Dallas Region",
+    city: "Far North Region",
     name: "Cross Timbers",
     statusArea: "Cross Timbers",
     statusType: "Riding area",
@@ -236,8 +232,7 @@ const trails = [
   },
   {
     key: "eisenhower-state-park",
-    city: "Dallas",
-    subsection: "Far North Dallas Region",
+    city: "Far North Region",
     name: "Eisenhower State Park",
     statusArea: "Eisenhower State Park",
     statusType: "Riding area",
@@ -389,8 +384,7 @@ const trails = [
   },
   {
     key: "ray-roberts-isle-du-bois",
-    city: "Dallas",
-    subsection: "Far North Dallas Region",
+    city: "Far North Region",
     name: "Ray Roberts Lake Isle Du Bois Unit",
     statusArea: "Ray Roberts Lake Isle Du Bois Unit",
     statusType: "Riding area",
@@ -398,8 +392,7 @@ const trails = [
   },
   {
     key: "ray-roberts-johnson-branch",
-    city: "Dallas",
-    subsection: "Far North Dallas Region",
+    city: "Far North Region",
     name: "Ray Roberts Lake Johnson Branch Unit",
     statusArea: "Ray Roberts Lake Johnson Branch Unit",
     statusType: "Riding area",
@@ -442,8 +435,7 @@ const trails = [
   },
   {
     key: "waterloo-lake",
-    city: "Dallas",
-    subsection: "Far North Dallas Region",
+    city: "Far North Region",
     name: "Waterloo Lake Regional Park",
     statusArea: "Waterloo Lake Regional Park",
     statusType: "Riding area",
@@ -484,8 +476,8 @@ const trails = [
   }
 ];
 
-const SECTION_ORDER = ["Dallas", "Fort Worth", "Tyler", "Waco", "Weatherford"];
-const SUBSECTION_ORDER = ["North Dallas Region", "South Dallas Region", "East Dallas Region", "Far North Dallas Region"];
+const SECTION_ORDER = ["Dallas", "Far North Region", "Fort Worth", "Tyler", "Waco", "Weatherford"];
+const SUBSECTION_ORDER = ["North Dallas Region", "South Dallas Region", "East Dallas Region"];
 
 const SECTION_DISPLAY = {
   "Weatherford": "Weatherford Region",
