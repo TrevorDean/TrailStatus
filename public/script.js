@@ -382,7 +382,7 @@ const trails = [
   {
     key: "pecan-grove-park",
     city: "Dallas",
-    subsection: "North Dallas Region",
+    subsection: "East Dallas Region",
     name: "Pecan Grove Park",
     statusArea: "Pecan Grove Park",
     statusType: "Riding area",
@@ -417,7 +417,7 @@ const trails = [
   {
     key: "rowlett-creek-preserve",
     city: "Dallas",
-    subsection: "North Dallas Region",
+    subsection: "East Dallas Region",
     name: "Rowlett Creek Preserve",
     statusArea: "Rowlett Creek Preserve",
     statusType: "Riding area",
@@ -435,7 +435,7 @@ const trails = [
   {
     key: "squabble-creek",
     city: "Dallas",
-    subsection: "North Dallas Region",
+    subsection: "East Dallas Region",
     name: "Squabble Creek Mountain Bike Trails",
     statusArea: "Squabble Creek Mountain Bike Trails",
     statusType: "Riding area",
@@ -486,7 +486,7 @@ const trails = [
 ];
 
 const SECTION_ORDER = ["Weatherford", "Fort Worth", "Tyler", "Dallas", "Waco"];
-const SUBSECTION_ORDER = ["North Dallas Region", "South Dallas Region", "Far North Dallas Region"];
+const SUBSECTION_ORDER = ["North Dallas Region", "South Dallas Region", "East Dallas Region", "Far North Dallas Region"];
 
 const SECTION_DISPLAY = {
   "Weatherford": "Weatherford Region",
