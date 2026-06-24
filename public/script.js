@@ -514,11 +514,29 @@ const filterButtons = [...document.querySelectorAll("[data-filter]")];
 const statusFilterButtons = [...document.querySelectorAll("[data-status-filter]")];
 let activeFilters = new Set();
 let activeStatusFilter = "all";
+let favoritesMode = false;
 let statuses = {};
 const collapsedSections = new Set();
 const collapsedSubsections = new Set();
+const favoritedTrails = new Set(JSON.parse(localStorage.getItem('ntxmtb-favorites') || '[]'));
+
+function saveFavorites() {
+  localStorage.setItem('ntxmtb-favorites', JSON.stringify([...favoritedTrails]));
+}
 
 groupsEl.addEventListener("click", (e) => {
+  const favBtn = e.target.closest(".fav-btn");
+  if (favBtn) {
+    const key = favBtn.dataset.key;
+    if (favoritedTrails.has(key)) {
+      favoritedTrails.delete(key);
+    } else {
+      favoritedTrails.add(key);
+    }
+    saveFavorites();
+    render();
+    return;
+  }
   const heading = e.target.closest(".subsection-heading");
   if (heading) {
     const key = heading.dataset.subsection;
@@ -579,9 +597,33 @@ function render() {
     return matchesCity && matchesSearch && matchesStatus;
   });
 
+  groupsEl.classList.toggle("fav-mode", favoritesMode);
+
   const sections = SECTION_ORDER.filter(city => visibleTrails.some(t => t.city === city));
 
-  groupsEl.innerHTML = sections
+  let favHtml = "";
+  if (favoritedTrails.size > 0) {
+    const favTrails = trails.filter(t => favoritedTrails.has(t.key));
+    const isCollapsed = collapsedSections.has("__favorites__");
+    favHtml = `
+      <section class="city-section favorites-section${isCollapsed ? " collapsed" : ""}" data-city="__favorites__">
+        <h2>Favorites</h2>
+        <div class="trail-table" role="table" aria-label="Favorite trails">
+          <div class="trail-heading" role="row">
+            <span>Trail Name</span>
+            <span>Status</span>
+            <span>Updated</span>
+            <span>City</span>
+            <span>Trail Org</span>
+            <span>Source</span>
+          </div>
+          <div class="trail-list">${favTrails.map(renderRow).join("")}</div>
+        </div>
+      </section>
+    `;
+  }
+
+  groupsEl.innerHTML = favHtml + sections
     .map((city) => {
       const sectionTrails = visibleTrails.filter(t => t.city === city);
       const mainTrails = sectionTrails.filter(t => !t.subsection);
@@ -631,9 +673,12 @@ function renderRow(trail) {
   const updated = formatUpdated(current?.updated || "");
   const linkText = statusUrl.includes("trailforks.com") ? "Trailforks" : "Find status";
 
+  const isFav = favoritedTrails.has(trail.key);
+  const favBtn = `<button class="fav-btn" data-key="${trail.key}" aria-label="${isFav ? "Remove from favorites" : "Add to favorites"}">${isFav ? "★" : "☆"}</button>`;
+
   return `
     <article class="trail-row" data-city="${trail.city}" role="row">
-      <a class="trail-name" href="${trail.url}" title="${sourceText}">${trail.name}</a>
+      <div class="trail-name-cell">${favBtn}<a class="trail-name" href="${trail.url}" title="${sourceText}">${trail.name}</a></div>
       <span class="status-pill ${statusClass}">${status}</span>
       <span class="status-updated">${trail.updatedNote ? `<span class="updated-note" tabindex="0" data-tooltip="${trail.updatedNote}">${updated}</span>` : updated}</span>
       <span class="trail-city">${statuses[trail.key]?.city || trail.city}</span>
@@ -747,5 +792,13 @@ searchClearEl.addEventListener("click", () => {
   searchEl.focus();
   render();
 });
+const favToggleEl = document.querySelector("#favorites-toggle");
+favToggleEl.addEventListener("click", () => {
+  favoritesMode = !favoritesMode;
+  favToggleEl.classList.toggle("active", favoritesMode);
+  favToggleEl.textContent = favoritesMode ? "★ Done" : "☆ Select Favorites";
+  render();
+});
+
 render();
 loadStatuses();

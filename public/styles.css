@@ -82,7 +82,7 @@ main {
   align-items: end;
   display: grid;
   gap: 18px;
-  grid-template-columns: minmax(220px, 1fr) auto auto;
+  grid-template-columns: minmax(220px, 1fr) auto auto auto;
   margin-bottom: 28px;
 }
 
@@ -459,6 +459,65 @@ main {
 
 .hidden {
   display: none;
+}
+
+/* Favorites toggle button */
+.fav-toggle-btn {
+  align-self: end;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  min-height: 46px;
+  padding: 0 16px;
+  white-space: nowrap;
+}
+
+.fav-toggle-btn.active {
+  background: #fffbea;
+  border-color: #c8a000;
+  color: #7a5f00;
+}
+
+/* Trail name cell wraps fav-btn + trail name link */
+.trail-name-cell {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.trail-name-cell .trail-name {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Fav button: hidden by default, shown in fav-mode or inside favorites section */
+.fav-btn {
+  background: none;
+  border: none;
+  color: #c8a000;
+  cursor: pointer;
+  display: none;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.fav-mode .fav-btn,
+.favorites-section .fav-btn {
+  display: inline-flex;
+}
+
+/* Favorites section heading: gold accent */
+.favorites-section h2 {
+  color: #7a5f00;
 }
 
 @media (max-width: 760px) {
