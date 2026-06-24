@@ -790,4 +790,12 @@ const infoClose = document.getElementById('info-close');
 infoBtn.addEventListener('click', () => infoModal.classList.remove('hidden'));
 infoClose.addEventListener('click', () => infoModal.classList.add('hidden'));
 infoModal.addEventListener('click', e => { if (e.target === infoModal) infoModal.classList.add('hidden'); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') infoModal.classList.add('hidden'); });
+
+const donateBtn = document.getElementById('donate-btn');
+const donateModal = document.getElementById('donate-modal');
+const donateClose = document.getElementById('donate-close');
+donateBtn.addEventListener('click', () => donateModal.classList.remove('hidden'));
+donateClose.addEventListener('click', () => donateModal.classList.add('hidden'));
+donateModal.addEventListener('click', e => { if (e.target === donateModal) donateModal.classList.add('hidden'); });
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { infoModal.classList.add('hidden'); donateModal.classList.add('hidden'); } });
