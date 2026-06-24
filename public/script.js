@@ -587,7 +587,8 @@ function render() {
   const search = searchEl.value.trim().toLowerCase();
   const visibleTrails = trails.filter((trail) => {
     const matchesCity = activeFilters.size === 0 || activeFilters.has(trail.city);
-    const matchesSearch = `${trail.city} ${trail.name} ${trail.statusArea}`.toLowerCase().includes(search);
+    const cityForSearch = statuses[trail.key]?.city || trail.city;
+    const matchesSearch = `${cityForSearch} ${trail.name} ${trail.statusArea}`.toLowerCase().includes(search);
     const status = (statuses[trail.key]?.status || "").toLowerCase();
     const matchesStatus =
       activeStatusFilter === "all" ||
