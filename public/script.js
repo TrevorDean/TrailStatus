@@ -494,8 +494,23 @@ let activeFilters = new Set();
 let activeStatusFilter = "all";
 let statuses = {};
 const collapsedSections = new Set();
+const collapsedSubsections = new Set();
 
 groupsEl.addEventListener("click", (e) => {
+  const heading = e.target.closest(".subsection-heading");
+  if (heading) {
+    const key = heading.dataset.subsection;
+    if (collapsedSubsections.has(key)) {
+      collapsedSubsections.delete(key);
+      heading.classList.remove("collapsed");
+      heading.nextElementSibling?.classList.remove("hidden");
+    } else {
+      collapsedSubsections.add(key);
+      heading.classList.add("collapsed");
+      heading.nextElementSibling?.classList.add("hidden");
+    }
+    return;
+  }
   const h2 = e.target.closest("h2");
   if (!h2) return;
   const section = h2.closest(".city-section");
@@ -555,7 +570,8 @@ function render() {
         const subTrails = sectionTrails
           .filter(t => t.subsection === sub)
           .sort((a, b) => a.name.localeCompare(b.name));
-        return `<div class="subsection-heading">${sub}</div>${subTrails.map(renderRow).join("")}`;
+        const isCollapsed = collapsedSubsections.has(sub);
+        return `<div class="subsection-heading${isCollapsed ? " collapsed" : ""}" data-subsection="${sub}">${sub}</div><div class="subsection-trails${isCollapsed ? " hidden" : ""}">${subTrails.map(renderRow).join("")}</div>`;
       }).join("");
 
       return `
