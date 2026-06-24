@@ -514,7 +514,6 @@ const filterButtons = [...document.querySelectorAll("[data-filter]")];
 const statusFilterButtons = [...document.querySelectorAll("[data-status-filter]")];
 let activeFilters = new Set();
 let activeStatusFilter = "all";
-let favoritesMode = false;
 let statuses = {};
 const collapsedSections = new Set();
 const collapsedSubsections = new Set();
@@ -596,8 +595,6 @@ function render() {
       (activeStatusFilter === "closed" && (status.includes("closed") || status.includes("wet") || status.includes("mud")));
     return matchesCity && matchesSearch && matchesStatus;
   });
-
-  groupsEl.classList.toggle("fav-mode", favoritesMode);
 
   const sections = SECTION_ORDER.filter(city => visibleTrails.some(t => t.city === city));
 
@@ -792,13 +789,5 @@ searchClearEl.addEventListener("click", () => {
   searchEl.focus();
   render();
 });
-const favToggleEl = document.querySelector("#favorites-toggle");
-favToggleEl.addEventListener("click", () => {
-  favoritesMode = !favoritesMode;
-  favToggleEl.classList.toggle("active", favoritesMode);
-  favToggleEl.textContent = favoritesMode ? "★ Done" : "☆ Select Favorites";
-  render();
-});
-
 render();
 loadStatuses();
