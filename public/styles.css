@@ -461,6 +461,22 @@ main {
   display: none;
 }
 
+.info-attribution {
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+}
+
+.info-attribution p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.info-attribution a {
+  color: var(--accent);
+}
+
 .info-btn {
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.3);
