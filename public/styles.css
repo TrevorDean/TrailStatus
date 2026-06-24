@@ -240,14 +240,29 @@ main {
 }
 
 .subsection-heading {
+  align-items: center;
   background: var(--bg);
   border-top: 2px solid var(--line);
   color: var(--accent);
+  cursor: pointer;
+  display: flex;
   font-size: 0.75rem;
   font-weight: 800;
+  gap: 6px;
   letter-spacing: 0.06em;
   padding: 7px 12px 7px 16px;
   text-transform: uppercase;
+  user-select: none;
+}
+
+.subsection-heading::after {
+  content: "▾";
+  font-size: 1.1rem;
+  transition: transform 0.2s;
+}
+
+.subsection-heading.collapsed::after {
+  transform: rotate(-90deg);
 }
 
 .trail-name {
