@@ -140,6 +140,7 @@ const trails = [
   {
     key: "barber-hills",
     city: "Dallas",
+    subsection: "Far North Dallas Region",
     lta: "Barber Hills Trail Association",
     name: "Barber Hills",
     statusArea: "Barber Hills",
