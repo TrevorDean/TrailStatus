@@ -131,6 +131,7 @@ const trails = [
   {
     key: "arbor-hills",
     city: "Dallas",
+    subsection: "North Dallas Region",
     name: "Arbor Hills Nature Preserve Off Road Bike Trail",
     statusArea: "Arbor Hills Nature Preserve Off Road Bike Trail",
     statusType: "Riding area",
@@ -157,6 +158,7 @@ const trails = [
   {
     key: "binkley-park",
     city: "Dallas",
+    subsection: "Far North Dallas Region",
     name: "Binkley Park",
     statusArea: "Binkley Park",
     statusType: "Riding area",
@@ -165,6 +167,7 @@ const trails = [
   {
     key: "bonham-state-park",
     city: "Dallas",
+    subsection: "Far North Dallas Region",
     name: "Bonham State Park",
     statusArea: "Bonham State Park",
     statusType: "Riding area",
@@ -191,6 +194,7 @@ const trails = [
   {
     key: "corinth-community-park",
     city: "Dallas",
+    subsection: "North Dallas Region",
     name: "Corinth Community Park",
     statusArea: "Corinth Community Park",
     statusType: "Riding area",
@@ -215,6 +219,7 @@ const trails = [
   {
     key: "cross-timbers",
     city: "Dallas",
+    subsection: "Far North Dallas Region",
     name: "Cross Timbers",
     statusArea: "Cross Timbers",
     statusType: "Riding area",
@@ -231,6 +236,7 @@ const trails = [
   {
     key: "eisenhower-state-park",
     city: "Dallas",
+    subsection: "Far North Dallas Region",
     name: "Eisenhower State Park",
     statusArea: "Eisenhower State Park",
     statusType: "Riding area",
@@ -239,6 +245,7 @@ const trails = [
   {
     key: "erwin-park",
     city: "Dallas",
+    subsection: "Far North Dallas Region",
     name: "Erwin Park",
     statusArea: "Erwin Park",
     statusType: "Riding area",
@@ -247,6 +254,7 @@ const trails = [
   {
     key: "erwin-park-skill-park",
     city: "Dallas",
+    subsection: "Far North Dallas Region",
     lta: "DORBA",
     name: "Erwin Park Skill Park",
     statusArea: "Erwin Park Skill Park",
@@ -257,6 +265,7 @@ const trails = [
   {
     key: "frisco-northwest-community-park",
     city: "Dallas",
+    subsection: "Far North Dallas Region",
     name: "Frisco Northwest Community Park",
     statusArea: "Frisco Northwest Community Park",
     statusType: "Riding area",
@@ -284,6 +293,7 @@ const trails = [
   {
     key: "harry-moss-park",
     city: "Dallas",
+    subsection: "North Dallas Region",
     name: "Harry Moss Park",
     statusArea: "Harry Moss Park",
     statusType: "Riding area",
@@ -292,6 +302,7 @@ const trails = [
   {
     key: "horseshoe",
     city: "Dallas",
+    subsection: "North Dallas Region",
     name: "Horseshoe",
     statusArea: "Horseshoe",
     statusType: "Riding area",
@@ -316,6 +327,7 @@ const trails = [
   {
     key: "knob-hills",
     city: "Dallas",
+    subsection: "North Dallas Region",
     name: "Knob Hills",
     statusArea: "Knob Hills",
     statusType: "Riding area",
@@ -324,6 +336,7 @@ const trails = [
   {
     key: "lb-houston-park",
     city: "Dallas",
+    subsection: "North Dallas Region",
     name: "L.B. Houston Park",
     statusArea: "L.B. Houston Park",
     statusType: "Riding area",
@@ -340,6 +353,7 @@ const trails = [
   {
     key: "northshore",
     city: "Dallas",
+    subsection: "North Dallas Region",
     lta: "DORBA",
     name: "Northshore",
     statusArea: "Northshore",
@@ -368,6 +382,7 @@ const trails = [
   {
     key: "pecan-grove-park",
     city: "Dallas",
+    subsection: "North Dallas Region",
     name: "Pecan Grove Park",
     statusArea: "Pecan Grove Park",
     statusType: "Riding area",
@@ -376,6 +391,7 @@ const trails = [
   {
     key: "ray-roberts-isle-du-bois",
     city: "Dallas",
+    subsection: "Far North Dallas Region",
     name: "Ray Roberts Lake Isle Du Bois Unit",
     statusArea: "Ray Roberts Lake Isle Du Bois Unit",
     statusType: "Riding area",
@@ -384,6 +400,7 @@ const trails = [
   {
     key: "ray-roberts-johnson-branch",
     city: "Dallas",
+    subsection: "Far North Dallas Region",
     name: "Ray Roberts Lake Johnson Branch Unit",
     statusArea: "Ray Roberts Lake Johnson Branch Unit",
     statusType: "Riding area",
@@ -400,6 +417,7 @@ const trails = [
   {
     key: "rowlett-creek-preserve",
     city: "Dallas",
+    subsection: "North Dallas Region",
     name: "Rowlett Creek Preserve",
     statusArea: "Rowlett Creek Preserve",
     statusType: "Riding area",
@@ -408,6 +426,7 @@ const trails = [
   {
     key: "sister-grove-park",
     city: "Dallas",
+    subsection: "Far North Dallas Region",
     name: "Sister Grove Park",
     statusArea: "Sister Grove Park",
     statusType: "Riding area",
@@ -416,6 +435,7 @@ const trails = [
   {
     key: "squabble-creek",
     city: "Dallas",
+    subsection: "North Dallas Region",
     name: "Squabble Creek Mountain Bike Trails",
     statusArea: "Squabble Creek Mountain Bike Trails",
     statusType: "Riding area",
@@ -424,6 +444,7 @@ const trails = [
   {
     key: "waterloo-lake",
     city: "Dallas",
+    subsection: "Far North Dallas Region",
     name: "Waterloo Lake Regional Park",
     statusArea: "Waterloo Lake Regional Park",
     statusType: "Riding area",
