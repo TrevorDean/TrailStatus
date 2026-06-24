@@ -1,7 +1,6 @@
 node_modules/
 .wrangler/
 .claude/
-Dorba.org/
-dorba.org.htm
+research/
 cron-worker/node_modules/
 cron-worker/.wrangler/
