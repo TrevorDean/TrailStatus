@@ -2,7 +2,7 @@
 
 ## Features
 
-1. [ ] Add donate button to page with webmaster info
+1. [x] Add donate button to page with webmaster info
 2. [ ] Add Weather link to each trail
 3. [ ] Show next-day weather forecast for each trail
 4. [ ] Create database that tracks trail open/closed status over time
