@@ -246,7 +246,7 @@ const trails = [
   {
     key: "erwin-park",
     city: "Dallas",
-    subsection: "Far North Dallas Region",
+    subsection: "North Dallas Region",
     name: "Erwin Park",
     statusArea: "Erwin Park",
     statusType: "Riding area",
@@ -255,7 +255,7 @@ const trails = [
   {
     key: "erwin-park-skill-park",
     city: "Dallas",
-    subsection: "Far North Dallas Region",
+    subsection: "North Dallas Region",
     lta: "DORBA",
     name: "Erwin Park Skill Park",
     statusArea: "Erwin Park Skill Park",
@@ -266,7 +266,7 @@ const trails = [
   {
     key: "frisco-northwest-community-park",
     city: "Dallas",
-    subsection: "Far North Dallas Region",
+    subsection: "North Dallas Region",
     name: "Frisco Northwest Community Park",
     statusArea: "Frisco Northwest Community Park",
     statusType: "Riding area",
@@ -425,7 +425,7 @@ const trails = [
   {
     key: "sister-grove-park",
     city: "Dallas",
-    subsection: "Far North Dallas Region",
+    subsection: "North Dallas Region",
     name: "Sister Grove Park",
     statusArea: "Sister Grove Park",
     statusType: "Riding area",
