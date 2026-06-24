@@ -486,6 +486,7 @@ const trails = [
 ];
 
 const SECTION_ORDER = ["Weatherford", "Fort Worth", "Tyler", "Dallas", "Waco"];
+const SUBSECTION_ORDER = ["North Dallas Region", "South Dallas Region", "Far North Dallas Region"];
 
 const SECTION_DISPLAY = {
   "Weatherford": "Weatherford Region",
@@ -584,7 +585,12 @@ function render() {
     .map((city) => {
       const sectionTrails = visibleTrails.filter(t => t.city === city);
       const mainTrails = sectionTrails.filter(t => !t.subsection);
-      const subsectionNames = [...new Set(sectionTrails.filter(t => t.subsection).map(t => t.subsection))].sort();
+      const subsectionNames = [...new Set(sectionTrails.filter(t => t.subsection).map(t => t.subsection))]
+        .sort((a, b) => {
+          const ai = SUBSECTION_ORDER.indexOf(a);
+          const bi = SUBSECTION_ORDER.indexOf(b);
+          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        });
 
       const mainHtml = mainTrails.map(renderRow).join("");
       const subsectionsHtml = subsectionNames.map(sub => {
