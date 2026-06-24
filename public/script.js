@@ -783,3 +783,11 @@ searchClearEl.addEventListener("click", () => {
 });
 render();
 loadStatuses();
+
+const infoBtn = document.getElementById('info-btn');
+const infoModal = document.getElementById('info-modal');
+const infoClose = document.getElementById('info-close');
+infoBtn.addEventListener('click', () => infoModal.classList.remove('hidden'));
+infoClose.addEventListener('click', () => infoModal.classList.add('hidden'));
+infoModal.addEventListener('click', e => { if (e.target === infoModal) infoModal.classList.add('hidden'); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') infoModal.classList.add('hidden'); });

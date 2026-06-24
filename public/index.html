@@ -11,6 +11,7 @@
     <header class="site-header">
       <div>
         <h1>North Texas MTB Trail Status</h1>
+        <button id="info-btn" class="info-btn" type="button" aria-label="About trail status">ⓘ Info</button>
       </div>
     </header>
 
@@ -121,6 +122,32 @@
         </div>
       </section>
     </main>
+
+    <div id="info-modal" class="info-modal hidden" role="dialog" aria-modal="true" aria-labelledby="info-modal-title">
+      <div class="info-dialog">
+        <button class="info-close" id="info-close" type="button" aria-label="Close">✕</button>
+        <h2 id="info-modal-title">About Trail Status</h2>
+
+        <h3>Why Do Trails Close?</h3>
+        <p>North Texas trails are built on heavy clay soil that becomes extremely soft when wet. Riding on saturated trails cuts deep ruts that can take weeks or months to repair and cause lasting damage to the trail system. When in doubt, stay out.</p>
+        <p>Trail stewards — all volunteers — monitor conditions and report status to <a href="https://www.trailforks.com" target="_blank" rel="noopener">Trailforks</a>, which this page pulls from every 5 minutes. They do their best to report accurately and quickly, but they have limited time. Show them grace.</p>
+
+        <h3>Status Guide</h3>
+        <div class="info-status-row">
+          <span class="status-pill status-open">Open</span>
+          <p>All clear — no trail issues to report.</p>
+        </div>
+        <div class="info-status-row">
+          <span class="status-pill status-caution">Caution</span>
+          <p>Minor issue present. Check Trailforks, the trail org page, or community pages for details before heading out.</p>
+        </div>
+        <div class="info-status-row">
+          <span class="status-pill status-closed">Closed</span>
+          <p>Trail is closed and should not be ridden.</p>
+        </div>
+        <p class="info-note">These statuses reflect the riding region as a whole. Individual trails within a region may have their own statuses — always check the Trailforks link for full details.</p>
+      </div>
+    </div>
 
     <script src="/script.js"></script>
   </body>
