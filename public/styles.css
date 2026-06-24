@@ -461,6 +461,104 @@ main {
   display: none;
 }
 
+.info-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-top: 18px;
+  padding: 8px 14px;
+}
+
+.info-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.info-modal {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  left: 0;
+  padding: 24px;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 100;
+}
+
+.info-dialog {
+  background: var(--panel);
+  border-radius: 12px;
+  max-height: 90vh;
+  max-width: 560px;
+  overflow-y: auto;
+  padding: 32px;
+  position: relative;
+  width: 100%;
+}
+
+.info-dialog h2 {
+  margin: 0 0 20px;
+}
+
+.info-dialog h3 {
+  margin: 24px 0 10px;
+}
+
+.info-dialog p {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+
+.info-dialog a {
+  color: var(--accent);
+}
+
+.info-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 4px 8px;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+}
+
+.info-close:hover {
+  color: var(--ink);
+}
+
+.info-status-row {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.info-status-row .status-pill {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.info-status-row p {
+  margin: 0;
+}
+
+.info-note {
+  border-left: 3px solid var(--line);
+  font-size: 0.88rem;
+  margin-top: 20px;
+  padding-left: 12px;
+}
+
 
 /* Trail name cell wraps fav-btn + trail name link */
 .trail-name-cell {
