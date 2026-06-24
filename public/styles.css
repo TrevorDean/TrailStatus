@@ -473,7 +473,8 @@ main {
   margin: 0 0 8px;
 }
 
-.info-donate-btn {
+.info-donate-btn,
+a.info-donate-btn {
   background: var(--accent);
   border-radius: 6px;
   color: #fff;
@@ -485,8 +486,10 @@ main {
   text-decoration: none;
 }
 
-.info-donate-btn:hover {
+.info-donate-btn:hover,
+a.info-donate-btn:hover {
   background: var(--accent-strong);
+  color: #fff;
 }
 
 .info-attribution {
