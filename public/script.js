@@ -293,7 +293,6 @@ const trails = [
   {
     key: "harry-moss-park",
     city: "Dallas",
-    subsection: "North Dallas Region",
     name: "Harry Moss Park",
     statusArea: "Harry Moss Park",
     statusType: "Riding area",
@@ -336,7 +335,6 @@ const trails = [
   {
     key: "lb-houston-park",
     city: "Dallas",
-    subsection: "North Dallas Region",
     name: "L.B. Houston Park",
     statusArea: "L.B. Houston Park",
     statusType: "Riding area",
