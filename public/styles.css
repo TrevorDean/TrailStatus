@@ -82,7 +82,7 @@ main {
   align-items: end;
   display: grid;
   gap: 18px;
-  grid-template-columns: minmax(220px, 1fr) auto auto auto;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
   margin-bottom: 28px;
 }
 
@@ -461,26 +461,6 @@ main {
   display: none;
 }
 
-/* Favorites toggle button — matches .segments container appearance */
-.fav-toggle-btn {
-  background: #e8eee8;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--muted);
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
-  padding: 4px 14px;
-  min-height: 0;
-  white-space: nowrap;
-}
-
-.fav-toggle-btn.active {
-  background: #fffbea;
-  border-color: #c8a000;
-  color: #7a5f00;
-}
 
 /* Trail name cell wraps fav-btn + trail name link */
 .trail-name-cell {
@@ -502,16 +482,11 @@ main {
   border: none;
   color: #c8a000;
   cursor: pointer;
-  display: none;
+  display: inline-flex;
   flex-shrink: 0;
   font-size: 1.1rem;
   line-height: 1;
   padding: 0;
-}
-
-.fav-mode .fav-btn,
-.favorites-section .fav-btn {
-  display: inline-flex;
 }
 
 /* Favorites section heading: gold accent */
