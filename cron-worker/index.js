@@ -44,6 +44,7 @@ const SOURCES_2 = [
   { key: "pecan-grove-park", type: "region", url: "https://www.trailforks.com/region/pecan-grove-park/" },
   { key: "ray-roberts-isle-du-bois", type: "region", url: "https://www.trailforks.com/region/ray-roberts-lake-isle-du-bois-unit/" },
   { key: "ray-roberts-johnson-branch", type: "region", url: "https://www.trailforks.com/region/ray-roberts-lake-johnson-branch-unit-13751/" },
+  { key: "jeff-laquey", type: "region", url: "https://www.trailforks.com/region/jeff-laquey-trail-system-68516/" },
   { key: "river-legacy-park", type: "region", url: "https://www.trailforks.com/region/river-legacy-park/" },
   { key: "rowlett-creek-preserve", type: "region", url: "https://www.trailforks.com/region/rowlett-creek-preserve-19612/" },
   { key: "sister-grove-park", type: "region", url: "https://www.trailforks.com/region/sister-grove-park-24208/" },
