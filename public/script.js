@@ -49,7 +49,7 @@ const trails = [
   {
     key: "chisenhall",
     city: "Fort Worth",
-    lta: "Burleson MTB Riders",
+    lta: "FWMBA",
     name: "Chisenhall",
     statusArea: "Chisenhall",
     statusType: "Riding area",
