@@ -399,6 +399,16 @@ const trails = [
     url: "https://www.trailforks.com/region/ray-roberts-lake-johnson-branch-unit-13751/"
   },
   {
+    key: "jeff-laquey",
+    city: "Far North Region",
+    lta: "Denton Trails",
+    name: "Jeff Laquey Trail System",
+    statusArea: "Jeff Laquey Trail System",
+    statusType: "Riding area",
+    rid: "68516",
+    url: "https://www.trailforks.com/region/jeff-laquey-trail-system-68516/"
+  },
+  {
     key: "river-legacy-park",
     city: "Dallas",
     name: "River Legacy Park",
