@@ -2,7 +2,8 @@
 
 ## Features
 
-1. [ ] Add Weather link to each trail
+1. [ ] Update Chisenhall Trail Org
+2. [ ] Add Weather link to each trail
 2. [ ] Show next-day weather forecast for each trail
 3. [ ] Create database that tracks trail open/closed status over time
 4. [ ] Figure out a way to pull rainfall stats (inches of rainfall per area)
