@@ -505,6 +505,7 @@ const LTA_LINKS = {
   "WBC": "https://www.wacobicycleclub.com/",
   "ETXTA": "https://www.trailforks.com/directory/10525/",
   "Burleson MTB Riders": "https://www.facebook.com/groups/579687176161531",
+  "Denton Trails": "https://www.dentontrails.org/home",
   "Hachie MTB Trail Riders": "https://www.facebook.com/groups/HachieMTB",
   "Waco Bicycle Club": "https://www.wacobicycleclub.com/"
 };
