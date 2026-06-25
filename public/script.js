@@ -75,6 +75,15 @@ const trails = [
     url: "https://www.trailforks.com/region/gateway-park/"
   },
   {
+    key: "jeff-laquey",
+    city: "Fort Worth",
+    name: "Jeff Laquey Trail System",
+    statusArea: "Jeff Laquey Trail System",
+    statusType: "Riding area",
+    rid: "68516",
+    url: "https://www.trailforks.com/region/jeff-laquey-trail-system-68516/"
+  },
+  {
     key: "marion-sansom",
     city: "Fort Worth",
     name: "Marion Sansom",

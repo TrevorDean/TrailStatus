@@ -48,6 +48,12 @@ const sources = [
     url: "https://www.trailforks.com/region/gateway-park/"
   },
   {
+    key: "jeff-laquey",
+    name: "Jeff Laquey Trail System",
+    type: "region",
+    url: "https://www.trailforks.com/region/jeff-laquey-trail-system-68516/"
+  },
+  {
     key: "marion-sansom",
     name: "Marion Sansom",
     type: "region",
