@@ -473,6 +473,10 @@ main {
   margin: 0 0 8px;
 }
 
+.info-donate-btn + .info-donate-btn {
+  margin-left: 8px;
+}
+
 .info-donate-btn,
 .info-dialog a.info-donate-btn {
   background: var(--accent);
