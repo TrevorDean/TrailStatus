@@ -23,7 +23,7 @@ Two halves, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, id `84a
 
 1. **Scraper (write side):** `.github/workflows/trail-status-cron.yml` runs every 5 minutes and executes `scripts/update-trail-status.js` — a plain Node script that fetches each Trailforks page with browser-like headers, regex-parses status/city/LTA out of the tag-stripped HTML, and writes two KV values via the Cloudflare REST API: `trail_statuses_1` and `trail_statuses_2` (the source list is split in half to stay under time limits). Each value is `{ updatedAt, statuses: { [key]: { status, updated, detail, city?, lta? } } }`. City/LTA from the previous run are preserved when a fetch doesn't return them.
 
-2. **Site (read side):** the worker serves static assets from `public/` and handles `GET /api/status`, which merges the two KV parts (falling back to scraping live on a cold/empty KV). `public/script.js` fetches `/api/status`, matches results to its own `trails` array by `key`, and renders cards grouped into city sections (`SECTION_ORDER`: Dallas, Far North Region, Fort Worth, Tyler, Waco, Weatherford). `LTA_LINKS` in `script.js` maps trail-association names to clickable URLs.
+2. **Site (read side):** the worker serves static assets from `public/` and handles `GET /api/status`, which merges the two KV parts. (On a cold/empty KV it falls back to scraping live from the Worker — but since Trailforks blocks Cloudflare, expect that fallback to return "Unavailable" statuses.) `public/script.js` fetches `/api/status`, matches results to its own `trails` array by `key`, and renders cards grouped into city sections (`SECTION_ORDER`: Dallas, Far North Region, Fort Worth, Tyler, Waco, Weatherford). `LTA_LINKS` in `script.js` maps trail-association names to clickable URLs.
 
 ### Deployment (Worker, not Pages)
 
@@ -33,7 +33,7 @@ The project started on Cloudflare Pages, but the Pages project no longer exists 
 
 ### Legacy
 
-Scraping originally ran as a scheduled Cloudflare Worker (`cron-worker/`) before the GitHub Actions migration; it was deleted from Cloudflare and removed from the repo on 2026-07-15. `research/` is a saved copy of dorba.org used when reverse-engineering trail sources.
+Scraping originally ran as a scheduled Cloudflare Worker (`cron-worker/`), but was moved to GitHub Actions because **Trailforks started blocking requests coming from Cloudflare** — do not move scraping back onto a Worker. The old cron worker was deleted from Cloudflare and removed from the repo on 2026-07-15. `research/` is a saved copy of dorba.org used when reverse-engineering trail sources.
 
 ## The duplication trap (most important thing to know)
 
