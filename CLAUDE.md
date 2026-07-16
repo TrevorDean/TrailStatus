@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-North Texas MTB Trail Status — a single-page site showing open/closed status for ~55 mountain bike trails. The live site is https://ntx.trailstatus.workers.dev/ — there is no custom domain (despite what TODO.md's completed items suggest). Status data is scraped from Trailforks trail/region pages by regex-parsing their HTML (there is no Trailforks API in use). Everything runs on Cloudflare; there is no build step, no framework, no tests, and no linter — plain JS, HTML, and CSS.
+North Texas MTB Trail Status — a single-page site showing open/closed status for ~55 mountain bike trails. The live site is https://ntx.trailstatus.workers.dev/ — there is no custom domain yet.
+
+This is a public repo. Project TODOs and drafts live in the gitignored `private/` directory (local machine only) — keep them and anything else non-public out of tracked files. Status data is scraped from Trailforks trail/region pages by regex-parsing their HTML (there is no Trailforks API in use). Everything runs on Cloudflare; there is no build step, no framework, no tests, and no linter — plain JS, HTML, and CSS.
 
 ## Commands
 

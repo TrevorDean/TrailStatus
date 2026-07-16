@@ -1,6 +1,7 @@
 node_modules/
 .wrangler/
 .claude/
+private/
 research/
 cron-worker/node_modules/
 cron-worker/.wrangler/
