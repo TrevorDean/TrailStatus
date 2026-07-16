@@ -355,6 +355,17 @@ const trails = [
     url: "https://www.trailforks.com/region/northshore/"
   },
   {
+    key: "preserve-at-maxwell-creek",
+    city: "Dallas",
+    subsection: "North Dallas Region",
+    lta: "City of Murphy",
+    name: "Preserve at Maxwell Creek",
+    statusArea: "Preserve at Maxwell Creek",
+    statusType: "Region",
+    rid: "56823",
+    url: "https://www.trailforks.com/region/preserve-at-maxwell-creek-56823/"
+  },
+  {
     key: "oak-cliff-nature-preserve",
     city: "Dallas",
     subsection: "South Dallas Region",
@@ -508,7 +519,8 @@ const LTA_LINKS = {
   "Denton Trails": "https://www.dentontrails.org/home",
   "DT": "https://www.dentontrails.org/home",
   "Hachie MTB Trail Riders": "https://www.facebook.com/groups/HachieMTB",
-  "Waco Bicycle Club": "https://www.wacobicycleclub.com/"
+  "Waco Bicycle Club": "https://www.wacobicycleclub.com/",
+  "City of Murphy": "https://www.murphytx.org/295/Preserve-at-Maxwell-Creek"
 };
 
 const groupsEl = document.querySelector("#trail-groups");

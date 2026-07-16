@@ -60,7 +60,8 @@ const SOURCES_2 = [
   { key: "tyler-state-park", type: "region", url: "https://www.trailforks.com/region/tyler-state-park/" },
   { key: "cameron-park", type: "region", url: "https://www.trailforks.com/region/cameron-park/" },
   { key: "lacy-point", type: "region", url: "https://www.trailforks.com/region/lacy-point-nature-trail-60140/" },
-  { key: "woodway-park", type: "region", url: "https://www.trailforks.com/region/woodway-park/" }
+  { key: "woodway-park", type: "region", url: "https://www.trailforks.com/region/woodway-park/" },
+  { key: "preserve-at-maxwell-creek", type: "region", url: "https://www.trailforks.com/region/preserve-at-maxwell-creek-56823/" }
 ];
 
 const fetchHeaders = {

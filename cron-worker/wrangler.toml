@@ -1,7 +1,0 @@
-name = "trail-status-cron"
-main = "index.js"
-compatibility_date = "2026-06-22"
-
-[[kv_namespaces]]
-binding = "TRAIL_CACHE"
-id = "84a3ba80c5fd4563b0bdb87f852a1993"

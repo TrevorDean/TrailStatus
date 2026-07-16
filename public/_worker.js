@@ -322,6 +322,12 @@ const sources = [
     name: "Woodway Park",
     type: "region",
     url: "https://www.trailforks.com/region/woodway-park/"
+  },
+  {
+    key: "preserve-at-maxwell-creek",
+    name: "Preserve at Maxwell Creek",
+    type: "region",
+    url: "https://www.trailforks.com/region/preserve-at-maxwell-creek-56823/"
   }
 ];
 
