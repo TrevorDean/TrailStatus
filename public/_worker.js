@@ -344,8 +344,6 @@ const fetchHeaders = {
   "Sec-Fetch-User": "?1"
 };
 
-const CACHE_KEY = "trail_statuses";
-
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -353,10 +351,6 @@ export default {
       return handleStatus(env);
     }
     return env.ASSETS.fetch(request);
-  },
-
-  async scheduled(event, env, ctx) {
-    ctx.waitUntil(refreshCache(env));
   }
 };
 
@@ -384,11 +378,6 @@ async function handleStatus(env) {
   return Response.json(data, {
     headers: { "Cache-Control": "public, max-age=60" }
   });
-}
-
-async function refreshCache(env) {
-  const data = await fetchAllStatuses();
-  await env.TRAIL_CACHE.put(CACHE_KEY, JSON.stringify(data));
 }
 
 async function fetchAllStatuses() {
@@ -445,22 +434,16 @@ function delay(ms) {
 
 function parseRegionStatus(html) {
   const text = toText(html);
-
   const match = text.match(/Region Status\s+([A-Za-z]+)(?:\s+as of\s+([^#]+?))?\s+Local Trail Association/i);
-  if (match) {
-    return { status: normalizeStatus(match[1]), updated: clean(match[2] || ""), detail: "Region Status" };
-  }
-
+  if (match) return { status: normalizeStatus(match[1]), updated: clean(match[2] || ""), detail: "Region Status" };
+  const dateMatch = text.match(/Region Status\s+([A-Za-z]+)\s+as of\s+([A-Za-z]+\.?\s+\d+,?\s*\d{4})/i);
+  if (dateMatch) return { status: normalizeStatus(dateMatch[1]), updated: clean(dateMatch[2]), detail: "Region Status" };
+  const lenientMatch = text.match(/Region Status\s+([A-Za-z]+)(?:\s+as of\s+([^#]+?))?\s+(?:Donate|Trail Reports|Nearby|Stats|Follow|Subscribe|Weather|Photos|About|Recent)/i);
+  if (lenientMatch) return { status: normalizeStatus(lenientMatch[1]), updated: clean(lenientMatch[2] || ""), detail: "Region Status" };
   const reportMatch = text.match(/Recent Trail Reports\s+status trail date condition info user\s+.+?\s+(Open|Closed)\.?\s*([^A-Z#]*)/i);
-  if (reportMatch) {
-    return { status: normalizeStatus(reportMatch[1]), updated: "", detail: clean(reportMatch[2] || "Recent trail report fallback") };
-  }
-
-  const lenientMatch = text.match(/Region Status\s+(Open|Closed|Caution|Wet|Dry|Ideal|Variable|Prevalent Mud)/i);
-  if (lenientMatch) {
-    return { status: normalizeStatus(lenientMatch[1]), updated: "", detail: "Region Status" };
-  }
-
+  if (reportMatch) return { status: normalizeStatus(reportMatch[1]), updated: "", detail: clean(reportMatch[2] || "Recent trail report fallback") };
+  const simpleMatch = text.match(/Region Status\s+(Open|Closed|Caution|Wet|Dry|Ideal|Variable|Prevalent Mud)/i);
+  if (simpleMatch) return { status: normalizeStatus(simpleMatch[1]), updated: "", detail: "Region Status" };
   return { status: "Unknown", updated: "", detail: "Status not found" };
 }
 
@@ -482,18 +465,50 @@ function parseTrailStatus(html) {
 
 function parseLTA(html) {
   const text = toText(html);
-  const match = text.match(/Local Trail Association\s+(.*?)\s+(?:Please|Donate|Trail Reports|Nearby Regions|Latest Conditions|Sponsor|Weather|Photos|Stats|Follow|Subscribe|Maps|About|Recent)/i);
+  const match = text.match(/Local Trail Association\s+(.*?)\s+(?:Please|Donate|Donations|Trail Reports|Trail Conditions|Nearby Regions|Nearby|Latest Conditions|Conditions|Sponsor|Weather|Photos|Stats|Follow|Subscribe|Maps|About|Recent|Check|Contact|Events|Volunteer|Region Status)/i);
   if (!match) return "";
   let lta = match[1].replace(/\s*\([^)]*\)\s*/g, " ").trim();
-  if (/^(Donate|Trail|Nearby|Latest|Sponsor|Weather|Photos|Stats|Follow|Subscribe|Maps|About|Recent|Trail Karma)/i.test(lta)) return "";
+  if (/^(Donate|Trail|Nearby|Latest|Sponsor|Weather|Photos|Stats|Follow|Subscribe|Maps|About|Recent|Trail Karma|Check|Conditions|Contact|Events|Volunteer)/i.test(lta)) return "";
   return lta.slice(0, 55);
 }
+
+const BROAD_REGION_TERMS = /^(Texas|North Texas|Central Texas|South Texas|East Texas|West Texas|United States|USA|North America|DFW|Metroplex)$/i;
 
 function parseCity(html) {
   const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
   if (titleMatch) {
-    const cityMatch = titleMatch[1].match(/, ([^,|]+) Mountain Biking/i);
-    if (cityMatch) return clean(cityMatch[1]);
+    const commaMatch = titleMatch[1].match(/,\s*([^,|]+?)\s+Mountain Biking/i);
+    if (commaMatch) {
+      const city = clean(commaMatch[1]);
+      if (!BROAD_REGION_TERMS.test(city)) return city;
+    }
+    const inMatch = titleMatch[1].match(/Mountain Biking\s+in\s+([^,|<]+)/i);
+    if (inMatch) {
+      const city = clean(inMatch[1]);
+      if (!BROAD_REGION_TERMS.test(city)) return city;
+    }
+  }
+  const jsonLdBlocks = [...html.matchAll(/<script[^>]+type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)];
+  for (const block of jsonLdBlocks) {
+    try {
+      const data = JSON.parse(block[1]);
+      const city = data?.address?.addressLocality || data?.containedInPlace?.name || data?.location?.address?.addressLocality;
+      if (city && !BROAD_REGION_TERMS.test(clean(city))) return clean(city);
+    } catch (e) {}
+  }
+  const lists = [...html.matchAll(/<[ou]l[^>]*>([\s\S]*?)<\/[ou]l>/gi)];
+  for (const list of lists) {
+    const items = [...list[1].matchAll(/href="\/region\/([^"]+)"[^>]*>\s*([^<]{2,50}?)\s*</gi)];
+    if (items.length >= 3) {
+      const city = clean(items[items.length - 2][2]);
+      if (!BROAD_REGION_TERMS.test(city) && city.length >= 2) return city;
+    }
+  }
+  const metaMatch = html.match(/content="([^"]*Mountain Biking[^"]*)"[^>]*(?:name="description"|property="og:description")/i) ||
+                    html.match(/(?:name="description"|property="og:description")[^>]*content="([^"]*Mountain Biking[^"]*)"/i);
+  if (metaMatch) {
+    const m = metaMatch[1].match(/(?:biking|trails?)\s+in\s+([A-Z][a-zA-Z\s]+?),?\s+Texas/i);
+    if (m && !BROAD_REGION_TERMS.test(clean(m[1]))) return clean(m[1]);
   }
   return "";
 }
