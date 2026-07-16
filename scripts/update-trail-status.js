@@ -238,9 +238,14 @@ function clean(value) {
 
 (async () => {
   if (!API_TOKEN) { console.error("CLOUDFLARE_API_TOKEN not set"); process.exit(1); }
-  console.log("Refreshing batch 1...");
-  await refreshBatch(SOURCES_1, "trail_statuses_1");
-  console.log("Refreshing batch 2...");
-  await refreshBatch(SOURCES_2, "trail_statuses_2");
+  const batch = process.argv[2]; // "1", "2", or undefined = both
+  if (batch !== "2") {
+    console.log("Refreshing batch 1...");
+    await refreshBatch(SOURCES_1, "trail_statuses_1");
+  }
+  if (batch !== "1") {
+    console.log("Refreshing batch 2...");
+    await refreshBatch(SOURCES_2, "trail_statuses_2");
+  }
   console.log("Done.");
 })();
