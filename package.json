@@ -1,9 +1,9 @@
 {
   "scripts": {
     "dev": "wrangler pages dev public --port 8788 --remote",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy --env=\"\""
   },
   "devDependencies": {
-    "wrangler": "^4.103.0"
+    "wrangler": "^4.111.0"
   }
 }
