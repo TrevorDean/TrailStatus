@@ -1,10 +1,15 @@
 name: Trail Status Cron
 
 on:
-  schedule:
-    - cron: '5-59/10 * * * *'   # batch 1 → :05,:15,:25,:35,:45,:55
-    - cron: '6-59/10 * * * *'   # batch 2 → :06,:16,:26,:36,:46,:56
   workflow_dispatch:
+    inputs:
+      batch:
+        description: 'Batch to scrape: 1, 2, or blank for both'
+        required: false
+        default: ''
+  schedule:                        # throttled fallback if the pinger stops
+    - cron: '5-59/10 * * * *'      # batch 1 → :05,:15,:25,:35,:45,:55
+    - cron: '6-59/10 * * * *'      # batch 2 → :06,:16,:26,:36,:46,:56
 
 jobs:
   update-status:
@@ -16,10 +21,13 @@ jobs:
           node-version: '20'
       - name: Fetch trail statuses and update KV
         run: |
-          case "${{ github.event.schedule }}" in
-            "5-59/10 * * * *") node scripts/update-trail-status.js 1 ;;
-            "6-59/10 * * * *") node scripts/update-trail-status.js 2 ;;
-            *)                 node scripts/update-trail-status.js ;;
-          esac
+          BATCH="${{ github.event.inputs.batch }}"
+          if [ -z "$BATCH" ]; then
+            case "${{ github.event.schedule }}" in
+              "5-59/10 * * * *") BATCH=1 ;;
+              "6-59/10 * * * *") BATCH=2 ;;
+            esac
+          fi
+          node scripts/update-trail-status.js $BATCH
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
