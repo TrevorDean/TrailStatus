@@ -439,6 +439,14 @@ const trails = [
     url: "https://www.trailforks.com/region/river-legacy-park/"
   },
   {
+    key: "red-kane-park",
+    city: "Dallas",
+    name: "Red Kane Park",
+    statusArea: "Red Kane Park",
+    statusType: "Riding area",
+    url: "https://www.trailforks.com/region/red-kane-park/"
+  },
+  {
     key: "rowlett-creek-preserve",
     city: "Dallas",
     subsection: "East Dallas Region",

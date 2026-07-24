@@ -62,7 +62,8 @@ const SOURCES_2 = [
   { key: "lacy-point", type: "region", url: "https://www.trailforks.com/region/lacy-point-nature-trail-60140/" },
   { key: "woodway-park", type: "region", url: "https://www.trailforks.com/region/woodway-park/" },
   { key: "preserve-at-maxwell-creek", type: "region", url: "https://www.trailforks.com/region/preserve-at-maxwell-creek-56823/" },
-  { key: "bridgeport", type: "region", url: "https://www.trailforks.com/region/endeavor-bridgeport-adventure-park-23422/" }
+  { key: "bridgeport", type: "region", url: "https://www.trailforks.com/region/endeavor-bridgeport-adventure-park-23422/" },
+  { key: "red-kane-park", type: "region", url: "https://www.trailforks.com/region/red-kane-park/" }
 ];
 
 const fetchHeaders = {

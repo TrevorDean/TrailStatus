@@ -334,6 +334,12 @@ const sources = [
     name: "Bridgeport",
     type: "region",
     url: "https://www.trailforks.com/region/endeavor-bridgeport-adventure-park-23422/"
+  },
+  {
+    key: "red-kane-park",
+    name: "Red Kane Park",
+    type: "region",
+    url: "https://www.trailforks.com/region/red-kane-park/"
   }
 ];
 
