@@ -422,6 +422,8 @@ const trails = [
   {
     key: "bridgeport",
     city: "Far North Region",
+    displayCity: "Bridgeport",
+    lta: "Bridgeport",
     name: "Bridgeport",
     statusArea: "Bridgeport",
     statusType: "Riding area",
@@ -529,7 +531,8 @@ const LTA_LINKS = {
   "DT": "https://www.dentontrails.org/home",
   "Hachie MTB Trail Riders": "https://www.facebook.com/groups/HachieMTB",
   "Waco Bicycle Club": "https://www.wacobicycleclub.com/",
-  "City of Murphy": "https://www.murphytx.org/295/Preserve-at-Maxwell-Creek"
+  "City of Murphy": "https://www.murphytx.org/295/Preserve-at-Maxwell-Creek",
+  "Bridgeport": "https://www.facebook.com/HikeBikeBridgeport/"
 };
 
 const groupsEl = document.querySelector("#trail-groups");
@@ -703,7 +706,7 @@ function renderRow(trail) {
       <div class="trail-name-cell">${favBtn}<a class="trail-name" href="${trail.url}" title="${sourceText}">${trail.name}</a></div>
       <span class="status-pill ${statusClass}">${status}</span>
       <span class="status-updated">${trail.updatedNote ? `<span class="updated-note" tabindex="0" data-tooltip="${trail.updatedNote}">${updated}</span>` : updated}</span>
-      <span class="trail-city">${statuses[trail.key]?.city || trail.city}</span>
+      <span class="trail-city">${trail.displayCity || statuses[trail.key]?.city || trail.city}</span>
       <span class="trail-lta">${renderLTA(statuses[trail.key]?.lta || trail.lta || "Unknown")}</span>
       <a class="status-link" href="${statusUrl}">${linkText}</a>
     </article>
