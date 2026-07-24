@@ -328,6 +328,12 @@ const sources = [
     name: "Preserve at Maxwell Creek",
     type: "region",
     url: "https://www.trailforks.com/region/preserve-at-maxwell-creek-56823/"
+  },
+  {
+    key: "bridgeport",
+    name: "Bridgeport",
+    type: "region",
+    url: "https://www.trailforks.com/region/endeavor-bridgeport-adventure-park-23422/"
   }
 ];
 

@@ -11,7 +11,7 @@ This is a public repo. Project TODOs and drafts live in the gitignored `private/
 ## Commands
 
 ```bash
-npm run dev        # wrangler pages dev public --port 8788 --remote  (local dev; site at localhost:8788, API at /api/status)
+npm run dev        # wrangler pages dev public --port 8788  (local dev; site at localhost:8788, API at /api/status)
 npm run deploy     # wrangler deploy — deploy the live site (Worker "ntx")
 npx wrangler deploy --env staging   # deploy to ntx-staging.trailstatus.workers.dev
 node scripts/update-trail-status.js # manually run the status scraper (needs CLOUDFLARE_API_TOKEN env var)
@@ -30,6 +30,8 @@ Two halves, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, id `84a
 ### Deployment (Worker, not Pages)
 
 The live site is the Cloudflare **Worker** `ntx` (`wrangler.toml`: `main = worker.js`, `public/` as assets, plus an `ntx-staging` env), deployed with `npx wrangler deploy`. `public/.assetsignore` excludes `_worker.js` from that asset upload.
+
+**Always pair a deploy with a commit + push to GitHub.** A production deploy (`npm run deploy`) ships whatever is in the working tree, so the repo must reflect exactly what's live. Whenever you deploy, also `git add`/`commit` the deployed changes and `git push` to the current branch's GitHub remote — do not deploy and leave the commit for later. (This is a workflow rule for Claude, not something the `deploy` npm script does automatically.)
 
 The project started on Cloudflare Pages, but the Pages project no longer exists (verified via API 2026-07-15). One Pages leftover remains: `npm run dev` still uses `wrangler pages dev` for local development — meaning **local dev runs `public/_worker.js` while production runs `worker.js`**.
 

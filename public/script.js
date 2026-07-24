@@ -420,6 +420,15 @@ const trails = [
     url: "https://www.trailforks.com/region/jeff-laquey-trail-system-68516/"
   },
   {
+    key: "bridgeport",
+    city: "Far North Region",
+    name: "Bridgeport",
+    statusArea: "Bridgeport",
+    statusType: "Riding area",
+    rid: "23422",
+    url: "https://www.trailforks.com/region/endeavor-bridgeport-adventure-park-23422/"
+  },
+  {
     key: "river-legacy-park",
     city: "Dallas",
     name: "River Legacy Park",
