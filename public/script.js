@@ -130,8 +130,7 @@ const trails = [
   },
   {
     key: "arbor-hills",
-    city: "Dallas",
-    subsection: "North Dallas Region",
+    city: "North Dallas Region",
     name: "Arbor Hills Nature Preserve Off Road Bike Trail",
     statusArea: "Arbor Hills Nature Preserve Off Road Bike Trail",
     statusType: "Riding area",
@@ -148,8 +147,7 @@ const trails = [
   },
   {
     key: "big-cedar",
-    city: "Dallas",
-    subsection: "South Dallas Region",
+    city: "South Dallas Region",
     name: "Big Cedar Wilderness Trails",
     statusArea: "Big Cedar Wilderness Trails",
     statusType: "Riding area",
@@ -173,8 +171,7 @@ const trails = [
   },
   {
     key: "boulder-park",
-    city: "Dallas",
-    subsection: "South Dallas Region",
+    city: "South Dallas Region",
     name: "Boulder Park",
     statusArea: "Boulder Park",
     statusType: "Riding area",
@@ -182,8 +179,7 @@ const trails = [
   },
   {
     key: "cedar-hill-state-park",
-    city: "Dallas",
-    subsection: "South Dallas Region",
+    city: "South Dallas Region",
     name: "Cedar Hill State Park",
     statusArea: "Cedar Hill State Park",
     statusType: "Riding area",
@@ -191,8 +187,7 @@ const trails = [
   },
   {
     key: "corinth-community-park",
-    city: "Dallas",
-    subsection: "North Dallas Region",
+    city: "North Dallas Region",
     name: "Corinth Community Park",
     statusArea: "Corinth Community Park",
     statusType: "Riding area",
@@ -200,7 +195,7 @@ const trails = [
   },
   {
     key: "creekside-park-dorba",
-    city: "Dallas",
+    city: "East Dallas Region",
     name: "Creekside Park DORBA Trail",
     statusArea: "Creekside Park DORBA Trail",
     statusType: "Riding area",
@@ -208,7 +203,7 @@ const trails = [
   },
   {
     key: "creekside-park-skillpark",
-    city: "Dallas",
+    city: "East Dallas Region",
     name: "Creekside Park Skillpark",
     statusArea: "Creekside Park Skillpark",
     statusType: "Riding area",
@@ -240,8 +235,7 @@ const trails = [
   },
   {
     key: "erwin-park",
-    city: "Dallas",
-    subsection: "North Dallas Region",
+    city: "North Dallas Region",
     name: "Erwin Park",
     statusArea: "Erwin Park",
     statusType: "Riding area",
@@ -249,8 +243,7 @@ const trails = [
   },
   {
     key: "erwin-park-skill-park",
-    city: "Dallas",
-    subsection: "North Dallas Region",
+    city: "North Dallas Region",
     lta: "DORBA",
     name: "Erwin Park Skill Park",
     statusArea: "Erwin Park Skill Park",
@@ -260,8 +253,7 @@ const trails = [
   },
   {
     key: "frisco-northwest-community-park",
-    city: "Dallas",
-    subsection: "North Dallas Region",
+    city: "North Dallas Region",
     name: "Frisco Northwest Community Park",
     statusArea: "Frisco Northwest Community Park",
     statusType: "Riding area",
@@ -269,8 +261,7 @@ const trails = [
   },
   {
     key: "goat-island-preserve",
-    city: "Dallas",
-    subsection: "South Dallas Region",
+    city: "South Dallas Region",
     name: "Goat Island Preserve",
     statusArea: "Goat Island Preserve",
     statusType: "Riding area",
@@ -278,9 +269,8 @@ const trails = [
   },
   {
     key: "hachie-mtb-trail",
-    city: "Dallas",
+    city: "South Dallas Region",
     lta: "Hachie MTB Trail Riders",
-    subsection: "South Dallas Region",
     name: "Hachie MTB Trail",
     statusArea: "Hachie MTB Trail",
     statusType: "Riding area",
@@ -288,7 +278,7 @@ const trails = [
   },
   {
     key: "harry-moss-park",
-    city: "Dallas",
+    city: "North Dallas Region",
     name: "Harry Moss Park",
     statusArea: "Harry Moss Park",
     statusType: "Riding area",
@@ -296,8 +286,7 @@ const trails = [
   },
   {
     key: "horseshoe",
-    city: "Dallas",
-    subsection: "North Dallas Region",
+    city: "North Dallas Region",
     name: "Horseshoe",
     statusArea: "Horseshoe",
     statusType: "Riding area",
@@ -305,7 +294,7 @@ const trails = [
   },
   {
     key: "katie-jackson-park-dorba",
-    city: "Dallas",
+    city: "North Dallas Region",
     name: "Katie Jackson Park DORBA Trail",
     statusArea: "Katie Jackson Park DORBA Trail",
     statusType: "Riding area",
@@ -313,7 +302,7 @@ const trails = [
   },
   {
     key: "katie-jackson-park-skillpark",
-    city: "Dallas",
+    city: "North Dallas Region",
     name: "Katie Jackson Park Skillpark",
     statusArea: "Katie Jackson Park Skillpark",
     statusType: "Riding area",
@@ -321,8 +310,7 @@ const trails = [
   },
   {
     key: "knob-hills",
-    city: "Dallas",
-    subsection: "North Dallas Region",
+    city: "North Dallas Region",
     name: "Knob Hills",
     statusArea: "Knob Hills",
     statusType: "Riding area",
@@ -330,7 +318,7 @@ const trails = [
   },
   {
     key: "lb-houston-park",
-    city: "Dallas",
+    city: "North Dallas Region",
     name: "L.B. Houston Park",
     statusArea: "L.B. Houston Park",
     statusType: "Riding area",
@@ -346,8 +334,7 @@ const trails = [
   },
   {
     key: "northshore",
-    city: "Dallas",
-    subsection: "North Dallas Region",
+    city: "North Dallas Region",
     lta: "DORBA",
     name: "Northshore",
     statusArea: "Northshore",
@@ -356,8 +343,7 @@ const trails = [
   },
   {
     key: "preserve-at-maxwell-creek",
-    city: "Dallas",
-    subsection: "North Dallas Region",
+    city: "North Dallas Region",
     lta: "City of Murphy",
     name: "Preserve at Maxwell Creek",
     statusArea: "Preserve at Maxwell Creek",
@@ -367,8 +353,7 @@ const trails = [
   },
   {
     key: "oak-cliff-nature-preserve",
-    city: "Dallas",
-    subsection: "South Dallas Region",
+    city: "South Dallas Region",
     name: "Oak Cliff Nature Preserve",
     statusArea: "Oak Cliff Nature Preserve",
     statusType: "Riding area",
@@ -377,8 +362,7 @@ const trails = [
   },
   {
     key: "paul-dryer-preserve",
-    city: "Dallas",
-    subsection: "South Dallas Region",
+    city: "South Dallas Region",
     name: "Paul S. Dryer Preserve at Windmill Hill",
     statusArea: "Paul S. Dryer Preserve at Windmill Hill",
     statusType: "Riding area",
@@ -386,8 +370,7 @@ const trails = [
   },
   {
     key: "pecan-grove-park",
-    city: "Dallas",
-    subsection: "East Dallas Region",
+    city: "East Dallas Region",
     name: "Pecan Grove Park",
     statusArea: "Pecan Grove Park",
     statusType: "Riding area",
@@ -432,7 +415,7 @@ const trails = [
   },
   {
     key: "river-legacy-park",
-    city: "Dallas",
+    city: "Mid-Cities Region",
     name: "River Legacy Park",
     statusArea: "River Legacy Park",
     statusType: "Riding area",
@@ -440,7 +423,7 @@ const trails = [
   },
   {
     key: "red-kane-park",
-    city: "Dallas",
+    city: "Mid-Cities Region",
     name: "Red Kane Park",
     statusArea: "Red Kane Park",
     statusType: "Riding area",
@@ -448,8 +431,7 @@ const trails = [
   },
   {
     key: "rowlett-creek-preserve",
-    city: "Dallas",
-    subsection: "East Dallas Region",
+    city: "East Dallas Region",
     name: "Rowlett Creek Preserve",
     statusArea: "Rowlett Creek Preserve",
     statusType: "Riding area",
@@ -457,8 +439,7 @@ const trails = [
   },
   {
     key: "sister-grove-park",
-    city: "Dallas",
-    subsection: "North Dallas Region",
+    city: "North Dallas Region",
     name: "Sister Grove Park",
     statusArea: "Sister Grove Park",
     statusType: "Riding area",
@@ -466,8 +447,7 @@ const trails = [
   },
   {
     key: "squabble-creek",
-    city: "Dallas",
-    subsection: "East Dallas Region",
+    city: "East Dallas Region",
     name: "Squabble Creek Mountain Bike Trails",
     statusArea: "Squabble Creek Mountain Bike Trails",
     statusType: "Riding area",
@@ -483,8 +463,7 @@ const trails = [
   },
   {
     key: "wildcat-ranch",
-    city: "Dallas",
-    subsection: "South Dallas Region",
+    city: "South Dallas Region",
     name: "Wildcat Ranch",
     statusArea: "Wildcat Ranch",
     statusType: "Riding area",
@@ -516,14 +495,12 @@ const trails = [
   }
 ];
 
-const SECTION_ORDER = ["Dallas", "Far North Region", "Fort Worth", "Tyler", "Waco", "Weatherford"];
-const SUBSECTION_ORDER = ["North Dallas Region", "South Dallas Region", "East Dallas Region"];
+const SECTION_ORDER = ["North Dallas Region", "East Dallas Region", "South Dallas Region", "Mid-Cities Region", "Far North Region", "Fort Worth", "Tyler", "Waco", "Weatherford"];
 
 const SECTION_DISPLAY = {
   "Weatherford": "Weatherford Region",
   "Fort Worth": "Fort Worth Region",
-  "Tyler": "Tyler Region",
-  "Dallas": "Dallas Region"
+  "Tyler": "Tyler Region"
 };
 
 const LTA_LINKS = {
@@ -551,7 +528,6 @@ let activeFilters = new Set();
 let activeStatusFilter = "all";
 let statuses = {};
 const collapsedSections = new Set();
-const collapsedSubsections = new Set();
 const favoritedTrails = new Set(JSON.parse(localStorage.getItem('ntxmtb-favorites') || '[]'));
 
 function saveFavorites() {
@@ -569,20 +545,6 @@ groupsEl.addEventListener("click", (e) => {
     }
     saveFavorites();
     render();
-    return;
-  }
-  const heading = e.target.closest(".subsection-heading");
-  if (heading) {
-    const key = heading.dataset.subsection;
-    if (collapsedSubsections.has(key)) {
-      collapsedSubsections.delete(key);
-      heading.classList.remove("collapsed");
-      heading.nextElementSibling?.classList.remove("hidden");
-    } else {
-      collapsedSubsections.add(key);
-      heading.classList.add("collapsed");
-      heading.nextElementSibling?.classList.add("hidden");
-    }
     return;
   }
   const h2 = e.target.closest("h2");
@@ -658,23 +620,10 @@ function render() {
 
   groupsEl.innerHTML = favHtml + sections
     .map((city) => {
-      const sectionTrails = visibleTrails.filter(t => t.city === city);
-      const mainTrails = sectionTrails.filter(t => !t.subsection);
-      const subsectionNames = [...new Set(sectionTrails.filter(t => t.subsection).map(t => t.subsection))]
-        .sort((a, b) => {
-          const ai = SUBSECTION_ORDER.indexOf(a);
-          const bi = SUBSECTION_ORDER.indexOf(b);
-          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-        });
-
-      const mainHtml = mainTrails.map(renderRow).join("");
-      const subsectionsHtml = subsectionNames.map(sub => {
-        const subTrails = sectionTrails
-          .filter(t => t.subsection === sub)
-          .sort((a, b) => a.name.localeCompare(b.name));
-        const isCollapsed = collapsedSubsections.has(sub);
-        return `<div class="subsection-heading${isCollapsed ? " collapsed" : ""}" data-subsection="${sub}">${sub}</div><div class="subsection-trails${isCollapsed ? " hidden" : ""}">${subTrails.map(renderRow).join("")}</div>`;
-      }).join("");
+      const sectionTrails = visibleTrails
+        .filter(t => t.city === city)
+        .sort((a, b) => a.name.localeCompare(b.name));
+      const rowsHtml = sectionTrails.map(renderRow).join("");
 
       return `
         <section class="city-section${collapsedSections.has(city) ? " collapsed" : ""}" data-city="${city}">
@@ -688,7 +637,7 @@ function render() {
               <span>Trail Org</span>
               <span>Source</span>
             </div>
-            <div class="trail-list">${mainHtml}${subsectionsHtml}</div>
+            <div class="trail-list">${rowsHtml}</div>
           </div>
         </section>
       `;
