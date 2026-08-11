@@ -17,7 +17,7 @@ npx wrangler deploy --env staging   # deploy to ntx-staging.trailstatus.workers.
 node scripts/update-trail-status.js # manually run the status scraper (needs CLOUDFLARE_API_TOKEN env var)
 ```
 
-The Cloudflare API token lives in the GitHub Actions secret `CLOUDFLARE_API_TOKEN` (and locally in `.claude/settings.local.json` allow rules).
+The Cloudflare API token lives only in the GitHub Actions secret `CLOUDFLARE_API_TOKEN`; the cron injects it at runtime. It is not stored locally, so to run the scraper by hand pass it inline: `CLOUDFLARE_API_TOKEN=… node scripts/update-trail-status.js`.
 
 ## Architecture
 
