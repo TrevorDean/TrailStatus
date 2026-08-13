@@ -1,6 +1,7 @@
 {
+  "type": "module",
   "scripts": {
-    "dev": "wrangler pages dev public --port 8788",
+    "dev": "wrangler dev --port 8788",
     "deploy": "wrangler deploy --env=\"\""
   },
   "devDependencies": {

@@ -1,70 +1,9 @@
+import { sourcesForBatch } from "../public/trails.js";
+
 const ACCOUNT_ID = "671443894874b1e4965be5de8232dd92";
 const KV_NAMESPACE_ID = "84a3ba80c5fd4563b0bdb87f852a1993";
 const API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
 
-const SOURCES_1 = [
-  { key: "quanah-hill", type: "region", url: "https://www.trailforks.com/region/quanah-hill-19635/" },
-  { key: "parks-of-aledo", type: "region", url: "https://www.trailforks.com/region/parks-of-aledo/" },
-  { key: "trinity-track", type: "trail", url: "https://www.trailforks.com/trails/trinity-track-green-loop/" },
-  { key: "western-heritage-park", type: "trail", url: "https://www.trailforks.com/trails/western-heritage-park-green-trail/" },
-  { key: "the-pit", type: "region", url: "https://www.trailforks.com/region/the-pit-trails/" },
-  { key: "chisenhall", type: "region", url: "https://www.trailforks.com/region/chisenhall-38370/" },
-  { key: "fossil-creek-park", type: "region", url: "https://www.trailforks.com/region/fossil-creek-park-46439/" },
-  { key: "gateway-park", type: "region", url: "https://www.trailforks.com/region/gateway-park/" },
-  { key: "marion-sansom", type: "region", url: "https://www.trailforks.com/region/marion-sansom-park-14433/" },
-  { key: "north-z-boaz-park", type: "region", url: "https://www.trailforks.com/region/north-z-boaz-park-60252/" },
-  { key: "the-woods-at-dunlop-park", type: "region", url: "https://www.trailforks.com/region/the-woods-at-dunlop-park-72039/" },
-  { key: "arbor-hills", type: "region", url: "https://www.trailforks.com/region/arbor-hills-nature-preserve-off-road-bike-trail/" },
-  { key: "barber-hills", type: "region", url: "https://www.trailforks.com/region/barber-hills/" },
-  { key: "big-cedar", type: "region", url: "https://www.trailforks.com/region/big-cedar-wilderness-trails/" },
-  { key: "binkley-park", type: "region", url: "https://www.trailforks.com/region/binkley-park-24408/" },
-  { key: "bonham-state-park", type: "region", url: "https://www.trailforks.com/region/bonham-state-park/" },
-  { key: "boulder-park", type: "region", url: "https://www.trailforks.com/region/boulder-park-13783/" },
-  { key: "cedar-hill-state-park", type: "region", url: "https://www.trailforks.com/region/cedar-hill-state-park-19031/" },
-  { key: "corinth-community-park", type: "region", url: "https://www.trailforks.com/region/corinth-community-park-25637/" },
-  { key: "creekside-park-dorba", type: "region", url: "https://www.trailforks.com/region/creekside-park-dorba-trail/" },
-  { key: "creekside-park-skillpark", type: "region", url: "https://www.trailforks.com/region/creekside-park-skillpark/" },
-  { key: "cross-timbers", type: "region", url: "https://www.trailforks.com/region/cross-timbers/" },
-  { key: "dinosaur-valley-state-park", type: "region", url: "https://www.trailforks.com/region/dinosaur-valley-state-park/" },
-  { key: "eisenhower-state-park", type: "region", url: "https://www.trailforks.com/region/eisenhower-state-park-23481/" },
-  { key: "erwin-park", type: "region", url: "https://www.trailforks.com/region/erwin-park/" },
-  { key: "erwin-park-skill-park", type: "trail", url: "https://www.trailforks.com/trails/erwin-park-skills-area-530338/" },
-  { key: "frisco-northwest-community-park", type: "region", url: "https://www.trailforks.com/region/frisco-northwest-community-park/" },
-  { key: "goat-island-preserve", type: "region", url: "https://www.trailforks.com/region/goat-island-preserve-33774/" },
-  { key: "hachie-mtb-trail", type: "region", url: "https://www.trailforks.com/region/hachie-mtb-trail-28103/" },
-  { key: "harry-moss-park", type: "region", url: "https://www.trailforks.com/region/harry-moss-park-22007/" }
-];
-
-const SOURCES_2 = [
-  { key: "horseshoe", type: "region", url: "https://www.trailforks.com/region/horseshoe-13746/" },
-  { key: "katie-jackson-park-dorba", type: "region", url: "https://www.trailforks.com/region/katie-jackson-park-dorba-trail/" },
-  { key: "katie-jackson-park-skillpark", type: "region", url: "https://www.trailforks.com/region/katie-jackson-park-skillpark-45471/" },
-  { key: "knob-hills", type: "region", url: "https://www.trailforks.com/region/knob-hills-22005/" },
-  { key: "lb-houston-park", type: "region", url: "https://www.trailforks.com/region/l-b-houston-park-22065/" },
-  { key: "mineola-nature-preserve", type: "region", url: "https://www.trailforks.com/region/mineola-nature-preserve-greer-hill-mtb-trails/" },
-  { key: "northshore", type: "region", url: "https://www.trailforks.com/region/northshore/" },
-  { key: "oak-cliff-nature-preserve", type: "region", url: "https://www.trailforks.com/region/oak-cliff-nature-preserve/" },
-  { key: "paul-dryer-preserve", type: "region", url: "https://www.trailforks.com/region/paul-s-dryer-preserve-at-windmill-hill/" },
-  { key: "pecan-grove-park", type: "region", url: "https://www.trailforks.com/region/pecan-grove-park/" },
-  { key: "ray-roberts-isle-du-bois", type: "region", url: "https://www.trailforks.com/region/ray-roberts-lake-isle-du-bois-unit/" },
-  { key: "ray-roberts-johnson-branch", type: "region", url: "https://www.trailforks.com/region/ray-roberts-lake-johnson-branch-unit-13751/" },
-  { key: "jeff-laquey", type: "region", url: "https://www.trailforks.com/region/jeff-laquey-trail-system-68516/" },
-  { key: "river-legacy-park", type: "region", url: "https://www.trailforks.com/region/river-legacy-park/" },
-  { key: "rowlett-creek-preserve", type: "region", url: "https://www.trailforks.com/region/rowlett-creek-preserve-19612/" },
-  { key: "sister-grove-park", type: "region", url: "https://www.trailforks.com/region/sister-grove-park-24208/" },
-  { key: "squabble-creek", type: "region", url: "https://www.trailforks.com/region/squabble-creek-mountain-bike-trails-33812/" },
-  { key: "waterloo-lake", type: "region", url: "https://www.trailforks.com/region/waterloo-lake-regional-park-24406/" },
-  { key: "wildcat-ranch", type: "region", url: "https://www.trailforks.com/region/wildcat-ranch/" },
-  { key: "lindsey-park", type: "region", url: "https://www.trailforks.com/region/lindsey-park-13827/" },
-  { key: "faulkner-park", type: "region", url: "https://www.trailforks.com/region/faulkner-park-13829/" },
-  { key: "tyler-state-park", type: "region", url: "https://www.trailforks.com/region/tyler-state-park/" },
-  { key: "cameron-park", type: "region", url: "https://www.trailforks.com/region/cameron-park/" },
-  { key: "lacy-point", type: "region", url: "https://www.trailforks.com/region/lacy-point-nature-trail-60140/" },
-  { key: "woodway-park", type: "region", url: "https://www.trailforks.com/region/woodway-park/" },
-  { key: "preserve-at-maxwell-creek", type: "region", url: "https://www.trailforks.com/region/preserve-at-maxwell-creek-56823/" },
-  { key: "bridgeport", type: "region", url: "https://www.trailforks.com/region/endeavor-bridgeport-adventure-park-23422/" },
-  { key: "red-kane-park", type: "region", url: "https://www.trailforks.com/region/red-kane-park/" }
-];
 
 const fetchHeaders = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
@@ -243,11 +182,11 @@ function clean(value) {
   const batch = process.argv[2]; // "1", "2", or undefined = both
   if (batch !== "2") {
     console.log("Refreshing batch 1...");
-    await refreshBatch(SOURCES_1, "trail_statuses_1");
+    await refreshBatch(sourcesForBatch(1), "trail_statuses_1");
   }
   if (batch !== "1") {
     console.log("Refreshing batch 2...");
-    await refreshBatch(SOURCES_2, "trail_statuses_2");
+    await refreshBatch(sourcesForBatch(2), "trail_statuses_2");
   }
   console.log("Done.");
 })();
