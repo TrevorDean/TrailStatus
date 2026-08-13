@@ -772,3 +772,68 @@ main {
     display: grid;
   }
 }
+
+/* ---- Map view ---- */
+.trail-map {
+  height: 70vh;
+  min-height: 360px;
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+  z-index: 0;
+}
+
+/* status-colored marker dots (saturated versions of the status pills) */
+.trail-marker {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 3px rgba(22, 32, 24, 0.45);
+  background: var(--muted);
+}
+.trail-marker.marker-open { background: var(--accent); }
+.trail-marker.marker-caution,
+.trail-marker.marker-manual { background: var(--warn); }
+.trail-marker.marker-closed { background: #c0392b; }
+.trail-marker.marker-unknown { background: #8a97a0; }
+
+/* popup */
+.map-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+.map-popup-name {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--accent-strong);
+  text-decoration: none;
+}
+.map-popup-name:hover { text-decoration: underline; }
+.map-popup-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.map-popup-updated { color: var(--muted); font-size: 0.78rem; }
+.map-popup-meta { color: var(--muted); }
+.map-popup-meta a { color: var(--accent); }
+.map-popup-link {
+  align-self: flex-start;
+  margin-top: 2px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.leaflet-popup-content { margin: 12px 14px; }
+
+@media (max-width: 760px) {
+  .trail-map { height: 60vh; }
+}
