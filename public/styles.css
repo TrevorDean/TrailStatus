@@ -826,12 +826,28 @@ main {
 .map-popup-updated { color: var(--muted); font-size: 0.78rem; }
 .map-popup-meta { color: var(--muted); }
 .map-popup-meta a { color: var(--accent); }
+.map-popup-links {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 4px;
+}
 .map-popup-link {
   align-self: flex-start;
-  margin-top: 2px;
   font-weight: 700;
   color: var(--accent);
 }
+.map-popup-parking {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+}
+.map-popup-parking:hover { background: var(--accent-strong); }
 .leaflet-popup-content { margin: 12px 14px; }
 
 @media (max-width: 760px) {
