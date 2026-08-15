@@ -208,7 +208,7 @@ main {
 }
 
 /* Column nudges, addressed explicitly so adding a column can't silently move
-   them: 2 Status, 4 City, 5 Avg Difficulty, 6 Trail Org, 7 Links. These were
+   them: 2 Status, 4 City, 5 Avg Difficulty, 6 Trail Org, 7 Directions. These were
    once written as :last-child / :nth-last-child(2), which re-targeted
    themselves onto the wrong headings whenever a column was appended. */
 .trail-heading span:nth-child(2) {
