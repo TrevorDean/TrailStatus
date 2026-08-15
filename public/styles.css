@@ -208,9 +208,9 @@ main {
 }
 
 /* Column nudges, addressed explicitly so adding a column can't silently move
-   them: 2 Status, 4 City, 5 Avg Difficulty, 6 Trail Org, 7 Source, 8 Parking.
-   These were previously written as :last-child / :nth-last-child(2), which
-   re-targeted themselves onto the wrong headings when Parking was appended. */
+   them: 2 Status, 4 City, 5 Avg Difficulty, 6 Trail Org, 7 Links. These were
+   once written as :last-child / :nth-last-child(2), which re-targeted
+   themselves onto the wrong headings whenever a column was appended. */
 .trail-heading span:nth-child(2) {
   text-align: center;
   transform: translateX(-12px);
@@ -225,8 +225,7 @@ main {
   transform: translateX(-12px);
 }
 
-.trail-heading span:nth-child(7),
-.trail-heading span:nth-child(8) {
+.trail-heading span:nth-child(7) {
   text-align: center;
   transform: translateX(-12px);
 }
@@ -239,7 +238,7 @@ main {
   font-size: 0.8rem;
   font-weight: 800;
   gap: 8px;
-  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) auto auto;
+  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) auto;
   padding: 10px 12px 10px 16px;
   text-transform: uppercase;
 }
@@ -253,7 +252,7 @@ main {
   display: grid;
   position: relative; /* anchors .trail-stats-tip */
   gap: 8px;
-  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) auto auto;
+  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) auto;
   min-height: 44px;
   padding: 6px 12px 6px 16px;
 }
@@ -424,6 +423,15 @@ main {
   text-align: center;
   text-decoration: none;
   white-space: nowrap;
+}
+
+/* Source and Parking share the final column rather than each taking one — an
+   8th column crowded the table at laptop widths. */
+.row-links {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
 }
 
 .parking-link {
@@ -817,11 +825,11 @@ main {
     display: none;
   }
 
-  /* Parking stays — directions are the most useful thing on a phone. Full
-     width on its own row rather than squeezed into the 2-column card. */
-  .parking-link {
+  /* Directions stay — they are the most useful thing on a phone. The wrapper
+     is the grid item now, so it spans the card and the link sits at the start. */
+  .row-links {
     grid-column: 1 / -1;
-    justify-self: start;
+    justify-content: start;
     margin-top: 4px;
   }
 

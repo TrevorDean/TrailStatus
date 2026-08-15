@@ -148,8 +148,7 @@ function render() {
             <span>City</span>
             <span>Avg Difficulty</span>
             <span>Trail Org</span>
-            <span>Source</span>
-            <span>Parking</span>
+            <span>Links</span>
           </div>
           <div class="trail-list">${favTrails.map(renderRow).join("")}</div>
         </div>
@@ -175,8 +174,7 @@ function render() {
               <span>City</span>
               <span>Avg Difficulty</span>
               <span>Trail Org</span>
-              <span>Source</span>
-              <span>Parking</span>
+              <span>Links</span>
             </div>
             <div class="trail-list">${rowsHtml}</div>
           </div>
@@ -259,7 +257,7 @@ function difficultyCell(trail) {
 function parkingCell(trail) {
   const url = parkingDirectionsUrl(trail);
   if (!url) return `<span class="parking-link parking-none">—</span>`;
-  return `<a class="parking-link" href="${url}" target="_blank" rel="noopener" title="Directions to parking">🅿️ Parking</a>`;
+  return `<a class="parking-link" href="${url}" target="_blank" rel="noopener" title="Directions to parking">🅿️ Directions</a>`;
 }
 
 // Map marker hover: name plus the two headline numbers, no status (the marker
@@ -291,8 +289,10 @@ function renderRow(trail) {
       <span class="trail-city">${trail.displayCity || statuses[trail.key]?.city || trail.city}</span>
       <span class="trail-difficulty">${difficultyCell(trail)}</span>
       <span class="trail-lta">${renderLTA(statuses[trail.key]?.lta || trail.lta || "Unknown")}</span>
-      <a class="status-link" href="${statusUrl}" target="_blank" rel="noopener">${linkText}</a>
-      ${parkingCell(trail)}
+      <div class="row-links">
+        <a class="status-link" href="${statusUrl}" target="_blank" rel="noopener">${linkText}</a>
+        ${parkingCell(trail)}
+      </div>
       ${statsTipHtml(trail)}
     </article>
   `;
