@@ -1,0 +1,16 @@
+name: Extract Parking Links
+
+# Manual maintenance job: pull the Google Maps parking links off each Trailforks
+# page (Trailforks blocks non-Actions IPs). Reads results from the run log.
+on:
+  workflow_dispatch:
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: node scripts/extract-parking.js
