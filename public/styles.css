@@ -86,7 +86,8 @@ main {
   margin-bottom: 12px;
 }
 
-/* View, Search and Status sit together on the first row; Region drops below. */
+/* View, Search, Status and Sort share the first row (wrapping if narrow);
+   Region drops below. */
 .search-field-wrap { flex: 0 1 300px; }
 .region-wrap { flex-basis: 100%; }
 

@@ -40,8 +40,10 @@ const groupsEl = document.querySelector("#trail-groups");
 const searchEl = document.querySelector("#trail-search");
 const filterButtons = [...document.querySelectorAll("[data-filter]")];
 const statusFilterButtons = [...document.querySelectorAll("[data-status-filter]")];
+const sortButtons = [...document.querySelectorAll("[data-sort]")];
 let activeFilters = new Set();
 let activeStatusFilter = "all";
+let activeSort = "name";
 let statuses = {};
 let currentView = "list";
 const collapsedSections = new Set();
@@ -112,6 +114,23 @@ function getVisibleTrails() {
   });
 }
 
+// Sorting applies within each city section (and the favourites block), since
+// the list stays grouped by city. Trailheads with no difficulty data sort last
+// in both directions rather than pretending to be easiest or hardest.
+function sortTrails(list) {
+  const byName = (a, b) => a.name.localeCompare(b.name);
+  if (activeSort === "name") return [...list].sort(byName);
+  const direction = activeSort === "easiest" ? 1 : -1;
+  return [...list].sort((a, b) => {
+    const da = TRAIL_STATS[a.key]?.avgDifficulty;
+    const db = TRAIL_STATS[b.key]?.avgDifficulty;
+    if (da == null && db == null) return byName(a, b);
+    if (da == null) return 1;
+    if (db == null) return -1;
+    return da === db ? byName(a, b) : (da - db) * direction;
+  });
+}
+
 function renderCurrentView() {
   if (currentView === "map") renderMap();
   else render();
@@ -138,7 +157,7 @@ function render() {
             <span>Trail Org</span>
             <span>Source</span>
           </div>
-          <div class="trail-list">${favTrails.map(renderRow).join("")}</div>
+          <div class="trail-list">${sortTrails(favTrails).map(renderRow).join("")}</div>
         </div>
       </section>
     `;
@@ -146,9 +165,7 @@ function render() {
 
   groupsEl.innerHTML = favHtml + sections
     .map((city) => {
-      const sectionTrails = visibleTrails
-        .filter(t => t.city === city)
-        .sort((a, b) => a.name.localeCompare(b.name));
+      const sectionTrails = sortTrails(visibleTrails.filter(t => t.city === city));
       const rowsHtml = sectionTrails.map(renderRow).join("");
 
       return `
@@ -464,6 +481,14 @@ statusFilterButtons.forEach((button) => {
     activeStatusFilter = button.dataset.statusFilter;
     statusFilterButtons.forEach((item) => item.classList.toggle("active", item === button));
     renderCurrentView();
+  });
+});
+
+sortButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    activeSort = button.dataset.sort;
+    sortButtons.forEach((item) => item.classList.toggle("active", item === button));
+    render(); // ordering only affects the list; the map is unchanged by it
   });
 });
 
