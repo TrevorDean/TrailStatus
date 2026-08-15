@@ -148,7 +148,7 @@ function render() {
             <span>City</span>
             <span>Avg Difficulty</span>
             <span>Trail Org</span>
-            <span>Directions</span>
+            <span>Trail Info and Directions</span>
           </div>
           <div class="trail-list">${favTrails.map(renderRow).join("")}</div>
         </div>
@@ -174,7 +174,7 @@ function render() {
               <span>City</span>
               <span>Avg Difficulty</span>
               <span>Trail Org</span>
-              <span>Directions</span>
+              <span>Trail Info and Directions</span>
             </div>
             <div class="trail-list">${rowsHtml}</div>
           </div>

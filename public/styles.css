@@ -210,8 +210,8 @@ main {
 /* Heading alignment. The heading and the rows are two separate grids, so they
    only line up if every track resolves identically — which means NO
    content-sized (auto / max-content) tracks. The last track was `auto`: it fitted
-   the word "DIRECTIONS" in the heading but two buttons in a row, so the two
-   grids sized it differently and every column drifted. It is a fixed 280px now.
+   the heading text in the heading but two buttons in a row, so the two grids
+   sized it differently and every column drifted. It is a fixed 280px now.
 
    Only column 4 needs a nudge, matching .trail-city's 12px padding-left.
    Columns 2 and 7 centre their content in the track, so centring the heading
