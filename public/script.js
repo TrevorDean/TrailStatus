@@ -45,7 +45,10 @@ let activeFilters = new Set();
 let activeStatusFilter = "all";
 let activeDifficulty = "all";
 let statuses = {};
-let currentView = "list";
+// The view the site opens on. index.html's markup (active button, hidden
+// classes) must match this, or there's a flash of the wrong view before JS runs.
+const DEFAULT_VIEW = "map";
+let currentView = DEFAULT_VIEW;
 const collapsedSections = new Set();
 const favoritedTrails = new Set(JSON.parse(localStorage.getItem('ntxmtb-favorites') || '[]'));
 
@@ -444,24 +447,29 @@ async function loadStatuses() {
 }
 
 const viewButtons = [...document.querySelectorAll("[data-view]")];
+
+// Single path for switching views, used by the buttons and by the initial
+// render, so the default view can't drift out of step with the toggle state.
+function setView(view) {
+  currentView = view;
+  viewButtons.forEach((b) => b.classList.toggle("active", b.dataset.view === view));
+  const isMap = view === "map";
+  groupsEl.classList.toggle("hidden", isMap);
+  mapEl.classList.toggle("hidden", !isMap);
+  if (isMap) {
+    ensureMap();
+    // let the container get its dimensions before Leaflet measures it
+    requestAnimationFrame(() => {
+      map.invalidateSize();
+      renderMap();
+    });
+  } else {
+    render();
+  }
+}
+
 viewButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    currentView = button.dataset.view;
-    viewButtons.forEach((b) => b.classList.toggle("active", b === button));
-    const isMap = currentView === "map";
-    groupsEl.classList.toggle("hidden", isMap);
-    mapEl.classList.toggle("hidden", !isMap);
-    if (isMap) {
-      ensureMap();
-      // let the container get its dimensions before Leaflet measures it
-      requestAnimationFrame(() => {
-        map.invalidateSize();
-        renderMap();
-      });
-    } else {
-      render();
-    }
-  });
+  button.addEventListener("click", () => setView(button.dataset.view));
 });
 
 filterButtons.forEach((button) => {
@@ -515,7 +523,7 @@ searchClearEl.addEventListener("click", () => {
   searchEl.focus();
   renderCurrentView();
 });
-render();
+setView(DEFAULT_VIEW);
 loadStatuses();
 
 const infoBtn = document.getElementById('info-btn');
