@@ -142,6 +142,7 @@ function render() {
             <span>Status</span>
             <span>Updated</span>
             <span>City</span>
+            <span>Avg Difficulty</span>
             <span>Trail Org</span>
             <span>Source</span>
           </div>
@@ -167,6 +168,7 @@ function render() {
               <span>Status</span>
               <span>Updated</span>
               <span>City</span>
+              <span>Avg Difficulty</span>
               <span>Trail Org</span>
               <span>Source</span>
             </div>
@@ -180,11 +182,11 @@ function render() {
 
 // --- Trail stats (generated from Trailforks by scripts/extract-trail-stats.js) ---
 
-// Difficulty is a 0.5-3.5 mean: white .5, green 1, blue 2, black 3, dbl black
+// avgDifficulty is a 0.5-3.5 mean: white .5, green 1, blue 2, black 3, dbl black
 // and pro 3.5. Each trailhead is named by band so the number has a plain-English
-// anchor; upper bound first match wins.
-// Three bands, matching the Difficulty picker's options exactly — a band with no
-// filter option would be unreachable, and an option with no band would be dead.
+// anchor; upper bound, first match wins. The three bands match the Avg Difficulty
+// picker's options exactly — a band with no filter option would be unreachable,
+// and an option with no band would be permanently empty.
 const DIFFICULTY_BANDS = [
   [1.4, "Beginner"],
   [2.2, "Intermediate"],
@@ -206,7 +208,7 @@ function statsRows(key, variant = "tip") {
   const s = TRAIL_STATS[key];
   if (!s) return null;
   const rows = [
-    ["Difficulty", difficultyText(s.avgDifficulty)],
+    ["Avg Difficulty", difficultyText(s.avgDifficulty)],
     ["Distance", `${s.totalMiles.toFixed(1)} mi`],
     [variant === "popup" ? "Total Climb" : "Climb", `${s.totalClimbFt.toLocaleString()} ft`],
     ["Per mile", `${s.ftPerMile.toLocaleString()} ft/mi`]
@@ -231,6 +233,13 @@ function statsPopupHtml(trail) {
   const rows = statsRows(trail.key, "popup");
   if (!rows) return "";
   return `<div class="map-popup-stats"><div class="stat-grid">${statGridHtml(rows)}</div></div>`;
+}
+
+// List-view Difficulty column. Erwin Park Skill Park has no sub-trail listing,
+// so it has no band to show.
+function difficultyCell(trail) {
+  const s = TRAIL_STATS[trail.key];
+  return s ? difficultyText(s.avgDifficulty) : "—";
 }
 
 // Map marker hover: name plus the two headline numbers, no status (the marker
@@ -260,6 +269,7 @@ function renderRow(trail) {
       <span class="status-pill ${statusClass}">${status}</span>
       <span class="status-updated">${trail.updatedNote ? `<span class="updated-note" tabindex="0" data-tooltip="${trail.updatedNote}">${updated}</span>` : updated}</span>
       <span class="trail-city">${trail.displayCity || statuses[trail.key]?.city || trail.city}</span>
+      <span class="trail-difficulty">${difficultyCell(trail)}</span>
       <span class="trail-lta">${renderLTA(statuses[trail.key]?.lta || trail.lta || "Unknown")}</span>
       <a class="status-link" href="${statusUrl}" target="_blank" rel="noopener">${linkText}</a>
       ${statsTipHtml(trail)}
