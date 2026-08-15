@@ -1,4 +1,5 @@
 import { TRAILS as trails } from "/trails.js";
+import { TRAIL_STATS } from "/trail-stats.js";
 
 const SECTION_ORDER = ["North Dallas Region", "East Dallas Region", "South Dallas Region", "Mid-Cities Region", "Far North Region", "Fort Worth", "Tyler", "Waco", "Weatherford"];
 
@@ -160,6 +161,42 @@ function render() {
     .join("");
 }
 
+// --- Trail stats (generated from Trailforks by scripts/extract-trail-stats.js) ---
+
+// Difficulty is a 0.5-3.5 mean: white .5, green 1, blue 2, black 3, dbl black
+// and pro 3.5. Shown against the top of the scale so the number reads clearly.
+const DIFFICULTY_MAX = 3.5;
+
+function statsRows(key) {
+  const s = TRAIL_STATS[key];
+  if (!s) return null;
+  return [
+    ["Difficulty", `${s.avgDifficulty} / ${DIFFICULTY_MAX}`],
+    ["Distance", `${s.totalMiles.toFixed(1)} mi`],
+    ["Climb", `${s.totalClimbFt.toLocaleString()} ft`],
+    ["Per mile", `${s.ftPerMile.toLocaleString()} ft/mi`],
+    ["Trails", String(s.trailCount)]
+  ];
+}
+
+function statsTipHtml(trail) {
+  const rows = statsRows(trail.key);
+  if (!rows) return "";
+  const body = rows
+    .map(([label, value]) => `<span class="stat-label">${label}</span><span class="stat-value">${value}</span>`)
+    .join("");
+  return `<div class="trail-stats-tip" role="tooltip"><div class="stat-title">${trail.name}</div><div class="stat-grid">${body}</div></div>`;
+}
+
+function statsPopupHtml(trail) {
+  const rows = statsRows(trail.key);
+  if (!rows) return "";
+  const body = rows
+    .map(([label, value]) => `<span class="stat-label">${label}</span><span class="stat-value">${value}</span>`)
+    .join("");
+  return `<div class="map-popup-stats"><div class="stat-grid">${body}</div></div>`;
+}
+
 function renderRow(trail) {
   const current = statuses[trail.key];
   const hasWidgetStatus = trail.rid || trail.trailId;
@@ -181,6 +218,7 @@ function renderRow(trail) {
       <span class="trail-city">${trail.displayCity || statuses[trail.key]?.city || trail.city}</span>
       <span class="trail-lta">${renderLTA(statuses[trail.key]?.lta || trail.lta || "Unknown")}</span>
       <a class="status-link" href="${statusUrl}">${linkText}</a>
+      ${statsTipHtml(trail)}
     </article>
   `;
 }
@@ -260,6 +298,7 @@ function mapPopupHtml(trail) {
       <div class="map-popup-row"><span class="status-pill ${statusClass}">${status}</span><span class="map-popup-updated">${updated}</span></div>
       <div class="map-popup-meta">${city}</div>
       <div class="map-popup-meta">Trail org: ${lta}</div>
+      ${statsPopupHtml(trail)}
       <a class="map-popup-link" href="${statusUrl}" target="_blank" rel="noopener">${linkText}</a>
     </div>
   `;
@@ -281,7 +320,10 @@ function renderMap(fitBounds = true) {
       iconAnchor: [9, 9],
       popupAnchor: [0, -9]
     });
-    const marker = L.marker([trail.lat, trail.lng], { icon, title: `${trail.name}: ${status}` })
+    // bindTooltip, not the native `title` attribute: the browser delays title
+    // tooltips ~1s, whereas Leaflet shows this the instant the pointer lands.
+    const marker = L.marker([trail.lat, trail.lng], { icon })
+      .bindTooltip(`${trail.name}: ${status}`, { direction: "top", offset: [0, -10], className: "trail-marker-tip" })
       .bindPopup(mapPopupHtml(trail));
     markerLayer.addLayer(marker);
     points.push([trail.lat, trail.lng]);
