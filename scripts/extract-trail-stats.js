@@ -184,6 +184,29 @@ export function parseTrailRows(html) {
   return rows;
 }
 
+// A region's listing caps at 100 trails per page and paginates with ?page=N
+// (Cameron Park has two). Follow every page and dedupe by trail URL.
+const MAX_PAGES = 20;
+
+async function fetchRegionRows(baseUrl) {
+  const res = await fetchOnce(baseUrl);
+  if (!res.ok) return { ok: false, status: res.status, rows: [], html: null, pages: 0 };
+  const html = await res.text();
+
+  const pageNums = [...html.matchAll(/[?&]page=(\d+)/g)].map((m) => Number(m[1]));
+  const lastPage = Math.min(pageNums.length ? Math.max(...pageNums) : 1, MAX_PAGES);
+
+  const byUrl = new Map();
+  for (const r of parseTrailRows(html)) byUrl.set(r.url, r);
+  for (let p = 2; p <= lastPage; p++) {
+    await delay(400);
+    const res2 = await fetchOnce(`${baseUrl}?page=${p}`);
+    if (!res2.ok) continue;
+    for (const r of parseTrailRows(await res2.text())) byUrl.set(r.url, r);
+  }
+  return { ok: true, status: res.status, rows: [...byUrl.values()], html, pages: lastPage };
+}
+
 export function aggregate(rows) {
   const rated = rows.filter((r) => r.score != null);
   const totalMiles = round(rows.reduce((sum, r) => sum + r.miles, 0), 3);
@@ -265,21 +288,26 @@ if (isEntryPoint) {
     for (const t of regions) {
       const url = trailsListUrl(t.url);
       try {
-        const res = await fetchOnce(url);
-        const html = await res.text();
-        if (!res.ok) {
-          problems.push(`${t.key}: HTTP ${res.status}`);
-          console.error(`${t.key}: HTTP ${res.status}`);
+        const { ok, status, rows, html, pages } = await fetchRegionRows(url);
+        if (!ok) {
+          problems.push(`${t.key}: HTTP ${status}`);
+          console.error(`${t.key}: HTTP ${status}`);
           await delay(400);
           continue;
         }
         writeFileSync(`dump/${t.key}.html`, html);
-        const rows = parseTrailRows(html);
         const agg = aggregate(rows);
         for (const r of rows) if (r.score == null) unmapped.set(String(r.diffSort), r.diffTitle);
-        if (!rows.length) problems.push(`${t.key}: 0 trails parsed`);
+        if (!rows.length) {
+          // e.g. a skills-park region with no trail listing — omit rather than
+          // publish zeroes the frontend would have to special-case anyway.
+          problems.push(`${t.key}: 0 trails parsed — omitted from output`);
+          console.error(`${t.key}: 0 trails — omitted`);
+          await delay(400);
+          continue;
+        }
         stats[t.key] = agg;
-        console.error(`${t.key}: ${agg.trailCount} trails | diff ${agg.avgDifficulty} | ${agg.totalMiles} mi | ${agg.totalClimbFt} ft | ${agg.ftPerMile} ft/mi`);
+        console.error(`${t.key}: ${agg.trailCount} trails${pages > 1 ? ` (${pages} pages)` : ""} | diff ${agg.avgDifficulty} | ${agg.totalMiles} mi | ${agg.totalClimbFt} ft | ${agg.ftPerMile} ft/mi`);
       } catch (error) {
         problems.push(`${t.key}: ${error}`);
         console.error(`${t.key}: ERROR ${error}`);
