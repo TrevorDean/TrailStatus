@@ -40,10 +40,10 @@ const groupsEl = document.querySelector("#trail-groups");
 const searchEl = document.querySelector("#trail-search");
 const filterButtons = [...document.querySelectorAll("[data-filter]")];
 const statusFilterButtons = [...document.querySelectorAll("[data-status-filter]")];
-const sortButtons = [...document.querySelectorAll("[data-sort]")];
+const difficultyButtons = [...document.querySelectorAll("[data-difficulty]")];
 let activeFilters = new Set();
 let activeStatusFilter = "all";
-let activeSort = "name";
+let activeDifficulty = "all";
 let statuses = {};
 let currentView = "list";
 const collapsedSections = new Set();
@@ -110,24 +110,12 @@ function getVisibleTrails() {
       activeStatusFilter === "all" ||
       (activeStatusFilter === "rideable" && (status.includes("open") || status.includes("caution") || status.includes("ideal") || status.includes("dry") || status.includes("variable"))) ||
       (activeStatusFilter === "closed" && (status.includes("closed") || status.includes("wet") || status.includes("mud")));
-    return matchesCity && matchesSearch && matchesStatus;
-  });
-}
-
-// Sorting applies within each city section (and the favourites block), since
-// the list stays grouped by city. Trailheads with no difficulty data sort last
-// in both directions rather than pretending to be easiest or hardest.
-function sortTrails(list) {
-  const byName = (a, b) => a.name.localeCompare(b.name);
-  if (activeSort === "name") return [...list].sort(byName);
-  const direction = activeSort === "easiest" ? 1 : -1;
-  return [...list].sort((a, b) => {
-    const da = TRAIL_STATS[a.key]?.avgDifficulty;
-    const db = TRAIL_STATS[b.key]?.avgDifficulty;
-    if (da == null && db == null) return byName(a, b);
-    if (da == null) return 1;
-    if (db == null) return -1;
-    return da === db ? byName(a, b) : (da - db) * direction;
+    // Trailheads with no sub-trail data have no band, so they only show under "All".
+    const stats = TRAIL_STATS[trail.key];
+    const matchesDifficulty =
+      activeDifficulty === "all" ||
+      (stats != null && difficultyBand(stats.avgDifficulty).toLowerCase() === activeDifficulty);
+    return matchesCity && matchesSearch && matchesStatus && matchesDifficulty;
   });
 }
 
@@ -157,7 +145,7 @@ function render() {
             <span>Trail Org</span>
             <span>Source</span>
           </div>
-          <div class="trail-list">${sortTrails(favTrails).map(renderRow).join("")}</div>
+          <div class="trail-list">${favTrails.map(renderRow).join("")}</div>
         </div>
       </section>
     `;
@@ -165,7 +153,9 @@ function render() {
 
   groupsEl.innerHTML = favHtml + sections
     .map((city) => {
-      const sectionTrails = sortTrails(visibleTrails.filter(t => t.city === city));
+      const sectionTrails = visibleTrails
+        .filter(t => t.city === city)
+        .sort((a, b) => a.name.localeCompare(b.name));
       const rowsHtml = sectionTrails.map(renderRow).join("");
 
       return `
@@ -193,17 +183,21 @@ function render() {
 // Difficulty is a 0.5-3.5 mean: white .5, green 1, blue 2, black 3, dbl black
 // and pro 3.5. Each trailhead is named by band so the number has a plain-English
 // anchor; upper bound first match wins.
+// Three bands, matching the Difficulty picker's options exactly — a band with no
+// filter option would be unreachable, and an option with no band would be dead.
 const DIFFICULTY_BANDS = [
   [1.4, "Beginner"],
   [2.2, "Intermediate"],
-  [2.8, "Advanced"],
   [Infinity, "Expert"]
 ];
 
+function difficultyBand(avg) {
+  return DIFFICULTY_BANDS.find(([max]) => avg <= max)[1];
+}
+
 function difficultyText(avg) {
   const n = avg.toFixed(1); // keep 1dp so a flat 1 reads "1.0", not "1"
-  const [, band] = DIFFICULTY_BANDS.find(([max]) => avg <= max);
-  return `${band} ${n}`;
+  return `${difficultyBand(avg)} ${n}`;
 }
 
 // variant "popup" is the map detail popup, which drops the trail count and
@@ -484,11 +478,11 @@ statusFilterButtons.forEach((button) => {
   });
 });
 
-sortButtons.forEach((button) => {
+difficultyButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    activeSort = button.dataset.sort;
-    sortButtons.forEach((item) => item.classList.toggle("active", item === button));
-    render(); // ordering only affects the list; the map is unchanged by it
+    activeDifficulty = button.dataset.difficulty;
+    difficultyButtons.forEach((item) => item.classList.toggle("active", item === button));
+    renderCurrentView(); // a filter, so it thins the map markers too
   });
 });
 

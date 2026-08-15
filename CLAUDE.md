@@ -68,7 +68,7 @@ All in `public/script.js` + `public/index.html`, no framework:
 - **Staging marker** — `script.js` appends "STAGING" to the `h1` and page title when the hostname contains `staging`, so the two environments are distinguishable at a glance.
 - **Favorites** — starred trails persist in `localStorage` under `ntxmtb-favorites` and render in a "Favorites" section above the city groups.
 - **Collapsible sections** — clicking a section heading collapses it; state lives in `collapsedSections` (favorites uses the sentinel key `__favorites__`).
-- **Filters** — region (`[data-filter]`), status (`[data-status-filter]`: All / Open+Caution / Closed), and a free-text search over trail and city names. `getVisibleTrails()` applies all three, and both views render from it.
+- **Filters** — region (`[data-filter]`), status (`[data-status-filter]`: All / Open+Caution / Closed), difficulty (`[data-difficulty]`: All / Beginner / Intermediate / Expert), and a free-text search over trail and city names. `getVisibleTrails()` applies all four, and both views render from it.
 - **Info and Donate modals**, closed by backdrop click or Escape.
 
 ## Trail stats (difficulty rating, mileage, climb)
@@ -82,6 +82,8 @@ All in `public/script.js` + `public/index.html`, no framework:
 | `totalClimbFt` | summed climb, feet |
 | `ftPerMile` | `totalClimbFt / totalMiles`, nearest foot |
 | `trailCount` / `ratedCount` | sub-trails found / of those, ones with a difficulty |
+
+`avgDifficulty` is displayed as a band name plus the number ("Intermediate 1.8"), from `DIFFICULTY_BANDS`: Beginner ≤1.4, Intermediate ≤2.2, Expert above. **Those bands and the Difficulty filter's options must stay in step** — a band with no matching option is unreachable, and an option with no band is permanently empty. Current spread is 20 / 33 / 2.
 
 Unrated sub-trails are excluded from `avgDifficulty` but still count toward distance and climb. Trailheads whose Trailforks page lists no sub-trails are **omitted from `TRAIL_STATS` entirely** rather than stored as zeroes — `statsRows()` returns `null` for them and no tooltip is rendered, so any new consumer must handle a missing key.
 
