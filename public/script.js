@@ -50,6 +50,11 @@ let statuses = {};
 const DEFAULT_VIEW = "map";
 let currentView = DEFAULT_VIEW;
 const collapsedSections = new Set();
+// Trail keys whose mobile stats panel is expanded. Deliberately in memory only,
+// like collapsedSections — this is transient "look at this one" state, not a
+// curated preference the way favourites are. A Set (not a single key) so several
+// trailheads can be open at once for comparison.
+const openStats = new Set();
 const favoritedTrails = new Set(JSON.parse(localStorage.getItem('ntxmtb-favorites') || '[]'));
 
 function saveFavorites() {
@@ -69,6 +74,24 @@ groupsEl.addEventListener("click", (e) => {
     render();
     return;
   }
+
+  const statsBtn = e.target.closest(".stats-btn");
+  if (statsBtn) {
+    const key = statsBtn.dataset.key;
+    const open = !openStats.has(key);
+    if (open) openStats.add(key);
+    else openStats.delete(key);
+    // Toggle in place rather than re-rendering: render() would rebuild all 58
+    // rows and destroy the button just tapped, dropping focus and the
+    // aria-expanded announcement. A favourited trail renders twice (Favorites
+    // section and its city section), so update every copy or they disagree.
+    groupsEl.querySelectorAll(`.trail-row[data-key="${key}"]`).forEach((row) => {
+      row.classList.toggle("stats-open", open);
+      row.querySelector(".stats-btn")?.setAttribute("aria-expanded", String(open));
+    });
+    return;
+  }
+
   const h2 = e.target.closest("h2");
   if (!h2) return;
   const section = h2.closest(".city-section");
@@ -236,7 +259,11 @@ function statGridHtml(rows) {
 function statsTipHtml(trail) {
   const rows = statsRows(trail, "tip");
   if (!rows) return "";
-  return `<div class="trail-stats-tip" role="tooltip"><div class="stat-title">${trail.name}</div><div class="stat-grid">${statGridHtml(rows)}</div></div>`;
+  // No role: on desktop this is a hover tooltip, but on mobile it is a
+  // tap-toggled disclosure panel owned by .stats-btn's aria-expanded, and
+  // role="tooltip" would be wrong for that (tooltips are transient and
+  // non-interactive).
+  return `<div class="trail-stats-tip"><div class="stat-title">${trail.name}</div><div class="stat-grid">${statGridHtml(rows)}</div></div>`;
 }
 
 function statsPopupHtml(trail) {
@@ -281,9 +308,19 @@ function renderRow(trail) {
   const isFav = favoritedTrails.has(trail.key);
   const favBtn = `<button class="fav-btn" data-key="${trail.key}" aria-label="${isFav ? "Remove from favorites" : "Add to favorites"}">${isFav ? "★" : "☆"}</button>`;
 
+  // Derive the toggle from the panel: statsTipHtml() is empty for a trailhead
+  // with no sub-trail data, so no button is offered where nothing would open.
+  // aria-expanded is re-emitted from openStats so the state survives the
+  // full render() that a favourite toggle forces.
+  const tip = statsTipHtml(trail);
+  const isOpen = openStats.has(trail.key);
+  const statsBtn = tip
+    ? `<button class="stats-btn" type="button" data-key="${trail.key}" aria-expanded="${isOpen}" aria-label="Trail stats for ${trail.name}">ⓘ</button>`
+    : "";
+
   return `
-    <article class="trail-row" data-city="${trail.city}" role="row">
-      <div class="trail-name-cell">${favBtn}<a class="trail-name" href="${trail.url}" title="${sourceText}" target="_blank" rel="noopener">${trail.name}</a></div>
+    <article class="trail-row${isOpen ? " stats-open" : ""}" data-key="${trail.key}" data-city="${trail.city}" role="row">
+      <div class="trail-name-cell">${favBtn}<a class="trail-name" href="${trail.url}" title="${sourceText}" target="_blank" rel="noopener">${trail.name}</a>${statsBtn}</div>
       <span class="status-pill ${statusClass}">${status}</span>
       <span class="status-updated">${trail.updatedNote ? `<span class="updated-note" tabindex="0" data-tooltip="${trail.updatedNote}">${updated}</span>` : updated}</span>
       <span class="trail-city">${trail.displayCity || statuses[trail.key]?.city || trail.city}</span>
@@ -293,7 +330,7 @@ function renderRow(trail) {
         <a class="status-link" href="${statusUrl}" target="_blank" rel="noopener">${linkText}</a>
         ${parkingCell(trail)}
       </div>
-      ${statsTipHtml(trail)}
+      ${tip}
     </article>
   `;
 }

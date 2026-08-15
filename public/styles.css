@@ -751,6 +751,26 @@ main {
   padding: 0;
 }
 
+/* Stats toggle: mobile only. Phones have no hover, so the ⓘ is the only way to
+   reach the numbers there; desktop keeps the instant hover tooltip untouched.
+   flex-shrink: 0 because .trail-name-cell is a flex row with overflow: hidden,
+   and the 32px minimum gives a real tap target. */
+.stats-btn {
+  align-items: center;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: none;
+  flex-shrink: 0;
+  font-size: 1rem;
+  justify-content: center;
+  line-height: 1;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0;
+}
+
 /* Favorites section heading: gold accent */
 .favorites-section h2 {
   color: #7a5f00;
@@ -805,6 +825,35 @@ main {
     white-space: normal;
   }
 
+  .stats-btn {
+    display: inline-flex;
+  }
+
+  /* The hover tooltip becomes an in-flow panel that the ⓘ opens: absolute +
+     nowrap at left:16px would run off the right edge of a phone. `display` is
+     what shows and hides it here, and opacity is pinned to 1 so the desktop
+     :hover / :focus-within rule cannot fight the toggle — that rule therefore
+     needs no changes at all. Closed cards stay pixel-identical to before,
+     since display:none occupies no grid row. */
+  .trail-stats-tip {
+    display: none;
+    grid-column: 1 / -1;
+    margin-top: 6px;
+    opacity: 1;
+    pointer-events: auto;
+    position: static;
+    white-space: normal;
+  }
+
+  .trail-row.stats-open .trail-stats-tip {
+    display: block;
+  }
+
+  /* The card heading already names the trail */
+  .trail-stats-tip .stat-title {
+    display: none;
+  }
+
   /* Status pill: size to content only, don't stretch to column width */
   .status-pill {
     justify-self: end;
@@ -827,6 +876,7 @@ main {
     grid-column: 1 / -1;
     justify-content: start;
     margin-top: 4px;
+    order: 1; /* keep Directions below an expanded stats panel */
   }
 
   .parking-none {
