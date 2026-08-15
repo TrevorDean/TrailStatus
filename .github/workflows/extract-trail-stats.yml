@@ -1,0 +1,32 @@
+name: Extract Trail Stats
+
+# Manual maintenance job: read each region's Trailforks trail-listing page
+# (Trailforks blocks non-Actions IPs) to derive per-trailhead difficulty,
+# mileage and climb. Recon output is in the run log; raw HTML is uploaded as an
+# artifact so the page markup can be inspected off-Actions.
+on:
+  workflow_dispatch:
+    inputs:
+      keys:
+        description: 'Trail keys to dump, space separated (e.g. "quanah-hill big-cedar")'
+        required: false
+        default: 'quanah-hill'
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # KEYS goes through env, not direct ${{ }} interpolation, so the input
+      # cannot inject shell commands into the run step.
+      - run: node scripts/extract-trail-stats.js --dump $KEYS
+        env:
+          KEYS: ${{ github.event.inputs.keys }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trailforks-html
+          path: dump/
