@@ -825,6 +825,7 @@ main {
 }
 .map-popup-updated { color: var(--muted); font-size: 0.78rem; }
 .map-popup-meta { color: var(--muted); }
+.map-popup-meta strong { color: var(--ink); font-weight: 700; }
 .map-popup-meta a { color: var(--accent); }
 .map-popup-links {
   display: flex;
@@ -832,22 +833,24 @@ main {
   gap: 5px;
   margin-top: 4px;
 }
-.map-popup-link {
+.leaflet-popup-content .map-popup-link {
   align-self: flex-start;
   font-weight: 700;
   color: var(--accent);
 }
-.map-popup-parking {
+.leaflet-popup-content .map-popup-parking {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 5px 10px;
   border-radius: 6px;
-  background: var(--accent);
-  color: #fff;
+  background: #e7efe9;
+  border: 1px solid var(--line);
+  color: #111;
+  font-weight: 700;
   text-decoration: none;
 }
-.map-popup-parking:hover { background: var(--accent-strong); }
+.leaflet-popup-content .map-popup-parking:hover { background: #d7e3da; }
 .leaflet-popup-content { margin: 12px 14px; }
 
 @media (max-width: 760px) {

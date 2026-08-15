@@ -276,9 +276,10 @@ function mapPopupHtml(trail) {
   return `
     <div class="map-popup">
       <a class="map-popup-name" href="${trail.url}" target="_blank" rel="noopener">${trail.name}</a>
-      <div class="map-popup-row"><span class="status-pill ${statusClass}">${status}</span><span class="map-popup-updated">${updated}</span></div>
-      <div class="map-popup-meta">${city}</div>
-      <div class="map-popup-meta">Trail org: ${lta}</div>
+      <div class="map-popup-row"><span class="status-pill ${statusClass}">${status}</span></div>
+      <div class="map-popup-meta"><strong>Updated:</strong> ${updated}</div>
+      <div class="map-popup-meta"><strong>City:</strong> ${city}</div>
+      <div class="map-popup-meta"><strong>Trail org:</strong> ${lta}</div>
       <div class="map-popup-links">
         <a class="map-popup-link" href="${statusUrl}" target="_blank" rel="noopener">${linkText}</a>
         ${parkingLink}
