@@ -3,13 +3,15 @@
 // .../trails/ listing page, which enumerates the individual trails at that
 // trailhead along with difficulty, distance and climb.
 //
-// Two modes:
-//   node scripts/extract-trail-stats.js --dump <key>
-//       Fetch ONE region and write its raw HTML to dump/<key>.html, plus print
-//       a recon summary to the log. Used to work out the page markup before
-//       any parser exists.
-//   node scripts/extract-trail-stats.js
-//       (not implemented until the markup is known — see PARSING below)
+// Modes:
+//   --dump <key…>   Fetch those regions, write raw HTML to dump/<key>.html and
+//                   print a recon summary. Used to work out page markup.
+//   --all           Sweep every trailhead with a listing and emit
+//                   dump/trail-stats.js, ready to copy to public/.
+//   --local [key…]  Re-parse already-saved HTML with no network. NOTE: only the
+//                   FIRST page of a paginated listing is saved, so --local
+//                   under-reports parks over 100 trails (Cameron Park: 100 vs
+//                   the true 127). Trust --all for counts.
 import { TRAILS } from "../public/trails.js";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 
@@ -126,11 +128,11 @@ function recon(html) {
 
 const METRES_PER_MILE = 1609.344;
 
-// data-sort value -> difficulty score. Values 2,3,7,8,9 confirmed against live
-// pages; 1 is inferred (white/easiest) and unconfirmed. Anything absent here is
-// reported by --local/full runs so the map can be completed.
+// data-sort value -> difficulty score. Every value here has been observed on a
+// live page. Anything absent is reported by --local/full runs so the map can be
+// completed rather than silently scoring as unrated.
 const DIFFICULTY_SCORE = {
-  1: 0.5,  // Easiest / White Circle (inferred, not yet observed)
+  1: 0.5,  // Easiest / White Circle (confirmed on the Willow Park listing)
   2: 1,    // Easy / Green Circle
   3: 2,    // Intermediate / Blue Square
   7: 3,    // Very Difficult / Black Diamond
@@ -155,21 +157,40 @@ function dataV(cellHtml) {
   return m ? parseFloat(m[1]) : null;
 }
 
+// Column layout is NOT fixed: most region pages have 7 columns, but some (e.g.
+// Willow Park) insert a "riding area" column, shifting distance/descent/climb
+// right by one. Reading by position silently swapped climb for descent there
+// and produced negative climb, so resolve the columns from the header row.
+export function columnIndex(html) {
+  const rows = [...html.matchAll(/<tr[\s>][\s\S]*?<\/tr>/gi)].map((m) => m[0]);
+  const header = rows.find((r) => /<th[\s>]/i.test(r)) || rows[0];
+  if (!header) return null;
+  const labels = cellsOf(header).map((c) => stripTags(c).toLowerCase());
+  const at = (name) => labels.indexOf(name);
+  return { distance: at("distance"), climb: at("climb"), labels };
+}
+
 export function parseTrailRows(html) {
+  const cols = columnIndex(html);
+  if (!cols || cols.distance === -1 || cols.climb === -1) return [];
+
   const rows = [];
   for (const match of html.matchAll(/<tr[\s>][\s\S]*?<\/tr>/gi)) {
     const row = match[0];
     const nameMatch = row.match(/<a href="([^"]*\/trails\/[^"]*)"[^>]*>([^<]+)<\/a>/);
     if (!nameMatch) continue; // header or non-trail row
     const cells = cellsOf(row);
-    if (cells.length < 7) continue;
+    if (cells.length <= Math.max(cols.distance, cols.climb)) continue;
 
-    const diffMatch = cells[2].match(/data-sort="(\d+)"/);
-    const diffSort = diffMatch ? Number(diffMatch[1]) : null;
-    const diffTitle = (cells[2].match(/title="([^"]*)"/) || [, ""])[1];
-    const statusTitle = (cells[0].match(/title="([^"]*)"/) || [, ""])[1];
+    // Icons are found by class anywhere in the row, so they don't depend on
+    // column order at all.
+    const diffSpan = (row.match(/<span[^>]*\bclass="dicon_small[^"]*"[^>]*>/) || [""])[0];
+    const diffSort = diffSpan.match(/data-sort="(\d+)"/) ? Number(diffSpan.match(/data-sort="(\d+)"/)[1]) : null;
+    const diffTitle = (diffSpan.match(/title="([^"]*)"/) || [, ""])[1];
+    const statusSpan = (row.match(/<span[^>]*\bclass="sicon_small[^"]*"[^>]*>/) || [""])[0];
+    const statusTitle = (statusSpan.match(/title="([^"]*)"/) || [, ""])[1];
 
-    const metres = dataV(cells[4]);
+    const metres = dataV(cells[cols.distance]);
     rows.push({
       name: nameMatch[2].trim(),
       url: nameMatch[1],
@@ -177,7 +198,7 @@ export function parseTrailRows(html) {
       diffTitle,
       score: diffSort != null && diffSort in DIFFICULTY_SCORE ? DIFFICULTY_SCORE[diffSort] : null,
       miles: metres == null ? 0 : round(metres / METRES_PER_MILE, 3),
-      climbFt: feetFromText(cells[6]),
+      climbFt: feetFromText(cells[cols.climb]),
       status: statusTitle
     });
   }
