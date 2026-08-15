@@ -176,35 +176,53 @@ function render() {
 // Difficulty is a 0.5-3.5 mean: white .5, green 1, blue 2, black 3, dbl black
 // and pro 3.5. Shown against the top of the scale so the number reads clearly.
 const DIFFICULTY_MAX = 3.5;
+// At or below this, the trailhead is called out as beginner-friendly by name.
+const BEGINNER_MAX = 1.4;
 
-function statsRows(key) {
+function difficultyText(avg) {
+  const n = avg.toFixed(1); // keep 1dp so a flat 1 reads "1.0", not "1"
+  return avg <= BEGINNER_MAX ? `Beginner ${n}` : `${n} / ${DIFFICULTY_MAX}`;
+}
+
+// variant "popup" is the map detail popup, which drops the trail count and
+// spells out "Total Climb"; "tip" is the list-view hover.
+function statsRows(key, variant = "tip") {
   const s = TRAIL_STATS[key];
   if (!s) return null;
-  return [
-    ["Difficulty", `${s.avgDifficulty} / ${DIFFICULTY_MAX}`],
+  const rows = [
+    ["Difficulty", difficultyText(s.avgDifficulty)],
     ["Distance", `${s.totalMiles.toFixed(1)} mi`],
-    ["Climb", `${s.totalClimbFt.toLocaleString()} ft`],
-    ["Per mile", `${s.ftPerMile.toLocaleString()} ft/mi`],
-    ["Trails", String(s.trailCount)]
+    [variant === "popup" ? "Total Climb" : "Climb", `${s.totalClimbFt.toLocaleString()} ft`],
+    ["Per mile", `${s.ftPerMile.toLocaleString()} ft/mi`]
   ];
+  if (variant !== "popup") rows.push(["Trails", String(s.trailCount)]);
+  return rows;
+}
+
+function statGridHtml(rows) {
+  return rows
+    .map(([label, value]) => `<span class="stat-label">${label}:</span><span class="stat-value">${value}</span>`)
+    .join("");
 }
 
 function statsTipHtml(trail) {
-  const rows = statsRows(trail.key);
+  const rows = statsRows(trail.key, "tip");
   if (!rows) return "";
-  const body = rows
-    .map(([label, value]) => `<span class="stat-label">${label}</span><span class="stat-value">${value}</span>`)
-    .join("");
-  return `<div class="trail-stats-tip" role="tooltip"><div class="stat-title">${trail.name}</div><div class="stat-grid">${body}</div></div>`;
+  return `<div class="trail-stats-tip" role="tooltip"><div class="stat-title">${trail.name}</div><div class="stat-grid">${statGridHtml(rows)}</div></div>`;
 }
 
 function statsPopupHtml(trail) {
-  const rows = statsRows(trail.key);
+  const rows = statsRows(trail.key, "popup");
   if (!rows) return "";
-  const body = rows
-    .map(([label, value]) => `<span class="stat-label">${label}</span><span class="stat-value">${value}</span>`)
-    .join("");
-  return `<div class="map-popup-stats"><div class="stat-grid">${body}</div></div>`;
+  return `<div class="map-popup-stats"><div class="stat-grid">${statGridHtml(rows)}</div></div>`;
+}
+
+// Map marker hover: name plus the two headline numbers, no status (the marker
+// colour already carries status).
+function markerTooltipText(trail) {
+  const s = TRAIL_STATS[trail.key];
+  if (!s) return trail.name;
+  return `${trail.name} — ${s.totalMiles.toFixed(1)} mi · ${s.totalClimbFt.toLocaleString()} ft climb`;
 }
 
 function renderRow(trail) {
@@ -358,7 +376,7 @@ function renderMap(fitBounds = true) {
     // bindTooltip, not the native `title` attribute: the browser delays title
     // tooltips ~1s, whereas Leaflet shows this the instant the pointer lands.
     const marker = L.marker(latLng, { icon })
-      .bindTooltip(`${trail.name}: ${status}`, { direction: "top", offset: [0, -10], className: "trail-marker-tip" })
+      .bindTooltip(markerTooltipText(trail), { direction: "top", offset: [0, -10], className: "trail-marker-tip" })
       .bindPopup(mapPopupHtml(trail));
     markerLayer.addLayer(marker);
     points.push(latLng);
