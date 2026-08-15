@@ -207,28 +207,28 @@ main {
   box-shadow: var(--shadow);
 }
 
-.trail-heading span:last-child {
-  text-align: center;
-  transform: translateX(-12px);
-}
-
+/* Column nudges, addressed explicitly so adding a column can't silently move
+   them: 2 Status, 4 City, 5 Avg Difficulty, 6 Trail Org, 7 Source, 8 Parking.
+   These were previously written as :last-child / :nth-last-child(2), which
+   re-targeted themselves onto the wrong headings when Parking was appended. */
 .trail-heading span:nth-child(2) {
   text-align: center;
   transform: translateX(-12px);
 }
 
-/* 4 = City, 6 = Trail Org. Difficulty was inserted at 5, shifting Trail Org
-   from 5 to 6 — these nudges track the columns, not the count. */
 .trail-heading span:nth-child(4) {
   transform: translateX(12px);
 }
 
 .trail-heading span:nth-child(6) {
+  padding-left: 12px;
   transform: translateX(-12px);
 }
 
-.trail-heading span:nth-last-child(2) {
-  padding-left: 12px;
+.trail-heading span:nth-child(7),
+.trail-heading span:nth-child(8) {
+  text-align: center;
+  transform: translateX(-12px);
 }
 
 .trail-heading {
@@ -239,7 +239,7 @@ main {
   font-size: 0.8rem;
   font-weight: 800;
   gap: 8px;
-  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) auto;
+  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) auto auto;
   padding: 10px 12px 10px 16px;
   text-transform: uppercase;
 }
@@ -253,7 +253,7 @@ main {
   display: grid;
   position: relative; /* anchors .trail-stats-tip */
   gap: 8px;
-  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) auto;
+  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) auto auto;
   min-height: 44px;
   padding: 6px 12px 6px 16px;
 }
@@ -424,6 +424,25 @@ main {
   text-align: center;
   text-decoration: none;
   white-space: nowrap;
+}
+
+.parking-link {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--accent-strong);
+  font-size: 0.86rem;
+  font-weight: 800;
+  min-height: 34px;
+  padding: 7px 10px;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.parking-none {
+  border-color: transparent;
+  color: var(--muted);
+  font-weight: 400;
 }
 
 .manual-checks {
@@ -795,6 +814,18 @@ main {
 
   /* Hide source link only; city stays visible */
   .status-link {
+    display: none;
+  }
+
+  /* Parking stays — directions are the most useful thing on a phone. Full
+     width on its own row rather than squeezed into the 2-column card. */
+  .parking-link {
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-top: 4px;
+  }
+
+  .parking-none {
     display: none;
   }
 

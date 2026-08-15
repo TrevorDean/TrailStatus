@@ -149,6 +149,7 @@ function render() {
             <span>Avg Difficulty</span>
             <span>Trail Org</span>
             <span>Source</span>
+            <span>Parking</span>
           </div>
           <div class="trail-list">${favTrails.map(renderRow).join("")}</div>
         </div>
@@ -175,6 +176,7 @@ function render() {
               <span>Avg Difficulty</span>
               <span>Trail Org</span>
               <span>Source</span>
+              <span>Parking</span>
             </div>
             <div class="trail-list">${rowsHtml}</div>
           </div>
@@ -251,6 +253,15 @@ function difficultyCell(trail) {
   return difficultyLabel(trail) ?? "—";
 }
 
+// List-view Parking column. Same Google Maps directions link the map popup
+// uses; renders an inert placeholder when a trailhead has no parking pin, so
+// the grid keeps its column count.
+function parkingCell(trail) {
+  const url = parkingDirectionsUrl(trail);
+  if (!url) return `<span class="parking-link parking-none">—</span>`;
+  return `<a class="parking-link" href="${url}" target="_blank" rel="noopener" title="Directions to parking">🅿️ Parking</a>`;
+}
+
 // Map marker hover: name plus the two headline numbers, no status (the marker
 // colour already carries status).
 function markerTooltipText(trail) {
@@ -281,6 +292,7 @@ function renderRow(trail) {
       <span class="trail-difficulty">${difficultyCell(trail)}</span>
       <span class="trail-lta">${renderLTA(statuses[trail.key]?.lta || trail.lta || "Unknown")}</span>
       <a class="status-link" href="${statusUrl}" target="_blank" rel="noopener">${linkText}</a>
+      ${parkingCell(trail)}
       ${statsTipHtml(trail)}
     </article>
   `;
