@@ -22,6 +22,14 @@ export const TRAIL_STATS = {
     "totalClimbFt": 806,
     "ftPerMile": 69
   },
+  "trinity-track": {
+    "trailCount": 5,
+    "ratedCount": 5,
+    "avgDifficulty": 0.7,
+    "totalMiles": 2.6,
+    "totalClimbFt": 40,
+    "ftPerMile": 15
+  },
   "western-heritage-park": {
     "trailCount": 9,
     "ratedCount": 9,
