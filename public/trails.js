@@ -11,6 +11,8 @@
 //              (scripts/extract-parking.js); when present they position the map
 //              marker and power the popup's "Directions to parking" link
 //   scrapeUrl  ONLY when the page scraped for status differs from the display url
+//   statsUrl   ONLY when the trail-listing page for stats isn't url + "/trails/"
+//              (e.g. a single-trail entry that still has a region listing)
 //   url        user-facing link shown on the card (also the default scrape target)
 //   + display fields used by the frontend (city, statusArea, statusType, lta, ...)
 //
@@ -20,7 +22,7 @@ export const TRAILS = [
   { key: "quanah-hill", type: "region", batch: 1, lat: 32.75896, lng: -97.79707, parkingLat: 32.784707, parkingLng: -97.696183, city: "Weatherford", name: "Quanah Hill", statusArea: "Quanah Hill", statusType: "Region", rid: "19635", url: "https://www.trailforks.com/region/quanah-hill-19635/" },
   { key: "parks-of-aledo", type: "region", batch: 1, lat: 32.69799, lng: -97.60399, parkingLat: 32.707757, parkingLng: -97.623662, city: "Weatherford", name: "Parks of Aledo", statusArea: "Parks of Aledo", statusType: "Riding area", rid: "23588", url: "https://www.trailforks.com/region/parks-of-aledo/" },
   { key: "trinity-track", type: "trail", batch: 1, lat: 32.76263, lng: -97.65058, parkingLat: 32.7411364, parkingLng: -97.6535548, city: "Weatherford", name: "Trinity Track", statusArea: "Trinity Track Green Loop", statusType: "Trail status", trailId: "780968", lta: "WMBC", url: "https://www.trailforks.com/trails/trinity-track-green-loop/", sourceUrl: "https://www.trailforks.com/region/willow-park/" },
-  { key: "western-heritage-park", type: "trail", batch: 1, lat: 32.82985, lng: -98.11608, parkingLat: 32.8331063, parkingLng: -98.1132817, city: "Weatherford", name: "Western Heritage Park", statusArea: "Western Heritage Park Green Trail", statusType: "Trail status", lta: "WMBC", url: "https://www.trailforks.com/trails/western-heritage-park-green-trail/", sourceUrl: "https://www.trailforks.com/trails/western-heritage-park-green-trail/reports/" },
+  { key: "western-heritage-park", type: "trail", batch: 1, lat: 32.82985, lng: -98.11608, parkingLat: 32.8331063, parkingLng: -98.1132817, city: "Weatherford", name: "Western Heritage Park", statusArea: "Western Heritage Park Green Trail", statusType: "Trail status", lta: "WMBC", url: "https://www.trailforks.com/trails/western-heritage-park-green-trail/", sourceUrl: "https://www.trailforks.com/trails/western-heritage-park-green-trail/reports/", statsUrl: "https://www.trailforks.com/region/western-heritage-park/trails/" },
   { key: "the-pit", type: "region", batch: 1, lat: 32.69799, lng: -97.60399, parkingLat: 32.6960324, parkingLng: -97.6053653, city: "Weatherford", name: "The Pit", statusArea: "The Pit Trails", statusType: "Riding area", url: "https://www.trailforks.com/region/the-pit-trails/" },
   { key: "chisenhall", type: "region", batch: 1, lat: 32.51899, lng: -97.3377, parkingLat: 32.522795, parkingLng: -97.329564, city: "Fort Worth", name: "Chisenhall", statusArea: "Chisenhall", statusType: "Riding area", rid: "38370", lta: "FWMBA", url: "https://www.trailforks.com/region/chisenhall-38370/" },
   { key: "fossil-creek-park", type: "region", batch: 1, lat: 32.91896, lng: -97.36701, parkingLat: 32.815625, parkingLng: -97.25415, city: "Fort Worth", name: "Fossil Creek Park", statusArea: "Fossil Creek Park", statusType: "Riding area", rid: "46439", url: "https://www.trailforks.com/region/fossil-creek-park-46439/" },

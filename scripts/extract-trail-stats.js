@@ -276,8 +276,9 @@ if (isEntryPoint) {
   } else if (mode === "--all") {
     // Full sweep: every trailhead with a /region/ page. The two genuine
     // single-trail entries have no sub-trail listing and are skipped.
-    const regions = TRAILS.filter((t) => /\/region\//.test(t.url));
-    const skipped = TRAILS.filter((t) => !/\/region\//.test(t.url)).map((t) => t.key);
+    const hasListing = (t) => t.statsUrl || /\/region\//.test(t.url);
+    const regions = TRAILS.filter(hasListing);
+    const skipped = TRAILS.filter((t) => !hasListing(t)).map((t) => t.key);
     console.error(`sweeping ${regions.length} regions; skipping ${skipped.length}: ${skipped.join(", ")}`);
 
     mkdirSync("dump", { recursive: true });
@@ -286,7 +287,7 @@ if (isEntryPoint) {
     const problems = [];
 
     for (const t of regions) {
-      const url = trailsListUrl(t.url);
+      const url = t.statsUrl || trailsListUrl(t.url);
       try {
         const { ok, status, rows, html, pages } = await fetchRegionRows(url);
         if (!ok) {

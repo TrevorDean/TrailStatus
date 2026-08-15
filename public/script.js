@@ -256,12 +256,12 @@ function renderRow(trail) {
 
   return `
     <article class="trail-row" data-city="${trail.city}" role="row">
-      <div class="trail-name-cell">${favBtn}<a class="trail-name" href="${trail.url}" title="${sourceText}">${trail.name}</a></div>
+      <div class="trail-name-cell">${favBtn}<a class="trail-name" href="${trail.url}" title="${sourceText}" target="_blank" rel="noopener">${trail.name}</a></div>
       <span class="status-pill ${statusClass}">${status}</span>
       <span class="status-updated">${trail.updatedNote ? `<span class="updated-note" tabindex="0" data-tooltip="${trail.updatedNote}">${updated}</span>` : updated}</span>
       <span class="trail-city">${trail.displayCity || statuses[trail.key]?.city || trail.city}</span>
       <span class="trail-lta">${renderLTA(statuses[trail.key]?.lta || trail.lta || "Unknown")}</span>
-      <a class="status-link" href="${statusUrl}">${linkText}</a>
+      <a class="status-link" href="${statusUrl}" target="_blank" rel="noopener">${linkText}</a>
       ${statsTipHtml(trail)}
     </article>
   `;
