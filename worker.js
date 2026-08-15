@@ -124,7 +124,7 @@ function parseTrailStatus(html) {
 
   const match = text.match(/Status:\s+on\s+([^#]+?)\s+(Ideal|Dry|Very Dry|Wet|Variable|Prevalent Mud|Closed|Open|Unknown)\s+/i);
   if (match) {
-    return { status: normalizeStatus(match[2]), updated: clean(match[1]), detail: "Trail status" };
+    return { status: normalizeStatus(match[2]), updated: cleanUpdated(match[1]), detail: "Trail status" };
   }
 
   const reportMatch = text.match(/Trail Reports\s+status date description\s+[^#]+?\s+(Open|Closed)\.?\s*([^#]*)/i);
@@ -202,4 +202,16 @@ function normalizeStatus(value) {
 
 function clean(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+// Reduce a scraped "updated" capture to just a date, so page/menu text swallowed
+// by the non-greedy status regex never reaches the response or the UI.
+function cleanUpdated(value) {
+  const s = clean(value);
+  if (!s) return "";
+  const date = s.match(/[A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{4}/);
+  if (date) return date[0];
+  const relative = s.match(/^\d+\s+(?:minute|hour|day|week|month|year)s?(?:\s+ago)?/i);
+  if (relative) return relative[0];
+  return s.length <= 24 ? s : "";
 }

@@ -185,7 +185,9 @@ function formatUpdated(updated) {
   if (!updated) return "Unknown";
   if (/^(today|yesterday|\d+\s+(minute|hour|day|week)s?)$/i.test(updated)) return updated;
   const date = new Date(updated);
-  if (isNaN(date.getTime())) return updated;
+  // Guard against scraped page/menu text leaking into the UI: an unparseable
+  // value is only shown if it's short enough to plausibly be a date.
+  if (isNaN(date.getTime())) return String(updated).length <= 24 ? updated : "Unknown";
   const sixWeeksAgo = new Date();
   sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
   if (date < sixWeeksAgo) {
