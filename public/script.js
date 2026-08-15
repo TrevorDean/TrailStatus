@@ -110,11 +110,12 @@ function getVisibleTrails() {
       activeStatusFilter === "all" ||
       (activeStatusFilter === "rideable" && (status.includes("open") || status.includes("caution") || status.includes("ideal") || status.includes("dry") || status.includes("variable"))) ||
       (activeStatusFilter === "closed" && (status.includes("closed") || status.includes("wet") || status.includes("mud")));
-    // Trailheads with no sub-trail data have no band, so they only show under "All".
-    const stats = TRAIL_STATS[trail.key];
+    // Uses the same label the column shows, so a manual override filters as it
+    // reads. Trailheads with neither an override nor data show only under "All".
+    const difficulty = difficultyLabel(trail);
     const matchesDifficulty =
       activeDifficulty === "all" ||
-      (stats != null && difficultyBand(stats.avgDifficulty).toLowerCase() === activeDifficulty);
+      (difficulty != null && difficulty.toLowerCase() === activeDifficulty);
     return matchesCity && matchesSearch && matchesStatus && matchesDifficulty;
   });
 }
@@ -197,18 +198,24 @@ function difficultyBand(avg) {
   return DIFFICULTY_BANDS.find(([max]) => avg <= max)[1];
 }
 
-function difficultyText(avg) {
-  const n = avg.toFixed(1); // keep 1dp so a flat 1 reads "1.0", not "1"
-  return `${difficultyBand(avg)} ${n}`;
+// Trailforks rates a number of these parks wrongly, so a trails.js entry may
+// carry a `difficulty` override ("Beginner" | "Intermediate" | "Expert") which
+// wins over the computed band. The numeric average is still shipped in
+// trail-stats.js — it is simply never displayed. Returns null when there is
+// neither an override nor any sub-trail data.
+function difficultyLabel(trail) {
+  if (trail.difficulty) return trail.difficulty;
+  const stats = TRAIL_STATS[trail.key];
+  return stats ? difficultyBand(stats.avgDifficulty) : null;
 }
 
 // variant "popup" is the map detail popup, which drops the trail count and
 // spells out "Total Climb"; "tip" is the list-view hover.
-function statsRows(key, variant = "tip") {
-  const s = TRAIL_STATS[key];
+function statsRows(trail, variant = "tip") {
+  const s = TRAIL_STATS[trail.key];
   if (!s) return null;
   const rows = [
-    ["Avg Difficulty", difficultyText(s.avgDifficulty)],
+    ["Avg Difficulty", difficultyLabel(trail) ?? "—"],
     ["Distance", `${s.totalMiles.toFixed(1)} mi`],
     [variant === "popup" ? "Total Climb" : "Climb", `${s.totalClimbFt.toLocaleString()} ft`],
     ["Per mile", `${s.ftPerMile.toLocaleString()} ft/mi`]
@@ -224,22 +231,21 @@ function statGridHtml(rows) {
 }
 
 function statsTipHtml(trail) {
-  const rows = statsRows(trail.key, "tip");
+  const rows = statsRows(trail, "tip");
   if (!rows) return "";
   return `<div class="trail-stats-tip" role="tooltip"><div class="stat-title">${trail.name}</div><div class="stat-grid">${statGridHtml(rows)}</div></div>`;
 }
 
 function statsPopupHtml(trail) {
-  const rows = statsRows(trail.key, "popup");
+  const rows = statsRows(trail, "popup");
   if (!rows) return "";
   return `<div class="map-popup-stats"><div class="stat-grid">${statGridHtml(rows)}</div></div>`;
 }
 
-// List-view Difficulty column. Erwin Park Skill Park has no sub-trail listing,
-// so it has no band to show.
+// List-view Avg Difficulty column — band name only; the number stays in the
+// data but is never rendered.
 function difficultyCell(trail) {
-  const s = TRAIL_STATS[trail.key];
-  return s ? difficultyText(s.avgDifficulty) : "—";
+  return difficultyLabel(trail) ?? "—";
 }
 
 // Map marker hover: name plus the two headline numbers, no status (the marker

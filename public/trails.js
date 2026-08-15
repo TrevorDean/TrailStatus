@@ -13,6 +13,10 @@
 //   scrapeUrl  ONLY when the page scraped for status differs from the display url
 //   statsUrl   ONLY when the trail-listing page for stats isn't url + "/trails/"
 //              (e.g. a single-trail entry that still has a region listing)
+//   difficulty ONLY to override the band computed from Trailforks' ratings,
+//              which are wrong for a number of these parks. One of
+//              "Beginner" | "Intermediate" | "Expert". Survives a stats
+//              re-sweep, since trail-stats.js is regenerated but this is not.
 //   url        user-facing link shown on the card (also the default scrape target)
 //   + display fields used by the frontend (city, statusArea, statusType, lta, ...)
 //
