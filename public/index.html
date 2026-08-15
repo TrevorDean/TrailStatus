@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>North Texas MTB Trail Status</title>
     <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
@@ -18,6 +19,13 @@
 
     <main>
       <section class="controls" aria-label="Trail filters">
+        <div class="search-wrap view-toggle-wrap">
+          <label>View</label>
+          <div class="segments" role="group" aria-label="Choose view">
+            <button class="active" type="button" data-view="list">List</button>
+            <button type="button" data-view="map">Map</button>
+          </div>
+        </div>
         <div class="search-wrap">
           <label for="trail-search">Search Trails or City</label>
           <div class="search-input-wrap">
@@ -52,6 +60,7 @@
       </section>
 
       <section id="trail-groups" class="trail-groups" aria-live="polite"></section>
+      <div id="trail-map" class="trail-map hidden" aria-label="Map of trails with current status"></div>
 
       <section class="manual-checks" aria-labelledby="manual-heading">
         <h2 id="manual-heading">Trail Organization Links</h2>
@@ -175,6 +184,7 @@
       </div>
     </div>
 
+    <script defer src="/vendor/leaflet/leaflet.js"></script>
     <script type="module" src="/script.js"></script>
     <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "9bb246d33d44434798e90d836c559cc8"}'></script><!-- End Cloudflare Web Analytics -->
   </body>

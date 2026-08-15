@@ -32,6 +32,7 @@ const statusFilterButtons = [...document.querySelectorAll("[data-status-filter]"
 let activeFilters = new Set();
 let activeStatusFilter = "all";
 let statuses = {};
+let currentView = "list";
 const collapsedSections = new Set();
 const favoritedTrails = new Set(JSON.parse(localStorage.getItem('ntxmtb-favorites') || '[]'));
 
@@ -85,9 +86,9 @@ function trailStatusWidgetUrl(trailId) {
   return `https://www.trailforks.com/widgets/trails_status/?${params.toString()}`;
 }
 
-function render() {
+function getVisibleTrails() {
   const search = searchEl.value.trim().toLowerCase();
-  const visibleTrails = trails.filter((trail) => {
+  return trails.filter((trail) => {
     const matchesCity = activeFilters.size === 0 || activeFilters.has(trail.city);
     const cityForSearch = statuses[trail.key]?.city || trail.city;
     const matchesSearch = `${cityForSearch} ${trail.name} ${trail.statusArea}`.toLowerCase().includes(search);
@@ -98,6 +99,15 @@ function render() {
       (activeStatusFilter === "closed" && (status.includes("closed") || status.includes("wet") || status.includes("mud")));
     return matchesCity && matchesSearch && matchesStatus;
   });
+}
+
+function renderCurrentView() {
+  if (currentView === "map") renderMap();
+  else render();
+}
+
+function render() {
+  const visibleTrails = getVisibleTrails();
 
   const sections = SECTION_ORDER.filter(city => visibleTrails.some(t => t.city === city));
 
@@ -213,6 +223,99 @@ function statusClassFor(status) {
   return "status-unknown";
 }
 
+// ---- Map view (Leaflet) ----
+const mapEl = document.querySelector("#trail-map");
+let map = null;
+let markerLayer = null;
+
+function ensureMap() {
+  if (map) {
+    map.invalidateSize();
+    return;
+  }
+  map = L.map(mapEl, { scrollWheelZoom: true }).setView([32.75, -97.1], 8);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+  markerLayer = L.layerGroup().addTo(map);
+}
+
+function markerClassFor(status) {
+  return statusClassFor(status).replace("status-", "marker-");
+}
+
+// Prefer the Trailforks parking coordinates for the marker; fall back to the
+// trail's approximate geocoded position when no parking link was found.
+function markerLatLng(trail) {
+  const lat = typeof trail.parkingLat === "number" ? trail.parkingLat : trail.lat;
+  const lng = typeof trail.parkingLng === "number" ? trail.parkingLng : trail.lng;
+  return [lat, lng];
+}
+
+// Google Maps driving directions to the trail's parking lot, using the same
+// coordinates Trailforks links to. Null when we have no real parking pin.
+function parkingDirectionsUrl(trail) {
+  if (typeof trail.parkingLat !== "number" || typeof trail.parkingLng !== "number") return null;
+  return `https://www.google.com/maps/dir/?api=1&destination=${trail.parkingLat},${trail.parkingLng}`;
+}
+
+function mapPopupHtml(trail) {
+  const current = statuses[trail.key];
+  const status = current?.status || "Loading";
+  const statusClass = statusClassFor(status);
+  const updated = formatUpdated(current?.updated || "");
+  const statusUrl = trail.sourceUrl || (trail.trailId ? trailStatusWidgetUrl(trail.trailId) : trail.url);
+  const linkText = statusUrl.includes("trailforks.com") ? "Trailforks" : "Find status";
+  const city = trail.displayCity || statuses[trail.key]?.city || trail.city;
+  const lta = renderLTA(statuses[trail.key]?.lta || trail.lta || "Unknown");
+  const parkingUrl = parkingDirectionsUrl(trail);
+  const parkingLink = parkingUrl
+    ? `<a class="map-popup-link map-popup-parking" href="${parkingUrl}" target="_blank" rel="noopener">🅿️ Directions to parking</a>`
+    : "";
+  return `
+    <div class="map-popup">
+      <a class="map-popup-name" href="${trail.url}" target="_blank" rel="noopener">${trail.name}</a>
+      <div class="map-popup-row"><span class="status-pill ${statusClass}">${status}</span></div>
+      <div class="map-popup-meta"><strong>Updated:</strong> ${updated}</div>
+      <div class="map-popup-meta"><strong>City:</strong> ${city}</div>
+      <div class="map-popup-meta"><strong>Trail org:</strong> ${lta}</div>
+      <div class="map-popup-links">
+        <a class="map-popup-link" href="${statusUrl}" target="_blank" rel="noopener">${linkText}</a>
+        ${parkingLink}
+      </div>
+    </div>
+  `;
+}
+
+function renderMap(fitBounds = true) {
+  if (!map || !markerLayer) return;
+  markerLayer.clearLayers();
+  const visible = getVisibleTrails().filter((t) => {
+    const [lat, lng] = markerLatLng(t);
+    return typeof lat === "number" && typeof lng === "number";
+  });
+  const points = [];
+  visible.forEach((trail) => {
+    const status = statuses[trail.key]?.status || "Loading";
+    const icon = L.divIcon({
+      className: "trail-marker-wrap",
+      html: `<span class="trail-marker ${markerClassFor(status)}"></span>`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+      popupAnchor: [0, -9]
+    });
+    const latLng = markerLatLng(trail);
+    const marker = L.marker(latLng, { icon, title: `${trail.name}: ${status}` })
+      .bindPopup(mapPopupHtml(trail));
+    markerLayer.addLayer(marker);
+    points.push(latLng);
+  });
+  if (fitBounds && points.length) {
+    map.fitBounds(points, { padding: [40, 40], maxZoom: 12 });
+  }
+}
+
 async function loadStatuses() {
   try {
     const response = await fetch("/api/status");
@@ -235,8 +338,29 @@ async function loadStatuses() {
     );
   }
 
-  render();
+  renderCurrentView();
 }
+
+const viewButtons = [...document.querySelectorAll("[data-view]")];
+viewButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    currentView = button.dataset.view;
+    viewButtons.forEach((b) => b.classList.toggle("active", b === button));
+    const isMap = currentView === "map";
+    groupsEl.classList.toggle("hidden", isMap);
+    mapEl.classList.toggle("hidden", !isMap);
+    if (isMap) {
+      ensureMap();
+      // let the container get its dimensions before Leaflet measures it
+      requestAnimationFrame(() => {
+        map.invalidateSize();
+        renderMap();
+      });
+    } else {
+      render();
+    }
+  });
+});
 
 filterButtons.forEach((button) => {
   button.addEventListener("click", () => {
@@ -256,7 +380,7 @@ filterButtons.forEach((button) => {
       const f = btn.dataset.filter;
       btn.classList.toggle("active", f === "all" ? activeFilters.size === 0 : activeFilters.has(f));
     });
-    render();
+    renderCurrentView();
   });
 });
 
@@ -264,7 +388,7 @@ statusFilterButtons.forEach((button) => {
   button.addEventListener("click", () => {
     activeStatusFilter = button.dataset.statusFilter;
     statusFilterButtons.forEach((item) => item.classList.toggle("active", item === button));
-    render();
+    renderCurrentView();
   });
 });
 
@@ -272,14 +396,14 @@ const searchClearEl = document.querySelector("#search-clear");
 
 searchEl.addEventListener("input", () => {
   searchClearEl.classList.toggle("hidden", searchEl.value === "");
-  render();
+  renderCurrentView();
 });
 
 searchClearEl.addEventListener("click", () => {
   searchEl.value = "";
   searchClearEl.classList.add("hidden");
   searchEl.focus();
-  render();
+  renderCurrentView();
 });
 render();
 loadStatuses();
