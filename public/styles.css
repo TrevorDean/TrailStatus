@@ -207,27 +207,23 @@ main {
   box-shadow: var(--shadow);
 }
 
-/* Column nudges, addressed explicitly so adding a column can't silently move
-   them: 2 Status, 4 City, 5 Avg Difficulty, 6 Trail Org, 7 Directions. These were
-   once written as :last-child / :nth-last-child(2), which re-targeted
-   themselves onto the wrong headings whenever a column was appended. */
-.trail-heading span:nth-child(2) {
+/* Heading alignment. The heading and the rows are two separate grids, so they
+   only line up if every track resolves identically — which means NO
+   content-sized (auto / max-content) tracks. The last track was `auto`: it fitted
+   the word "DIRECTIONS" in the heading but two buttons in a row, so the two
+   grids sized it differently and every column drifted. It is a fixed 280px now.
+
+   Only column 4 needs a nudge, matching .trail-city's 12px padding-left.
+   Columns 2 and 7 centre their content in the track, so centring the heading
+   is enough; the -12px shifts that used to be here were compensating for the
+   track mismatch above and now overshoot. */
+.trail-heading span:nth-child(2),
+.trail-heading span:nth-child(7) {
   text-align: center;
-  transform: translateX(-12px);
 }
 
 .trail-heading span:nth-child(4) {
-  transform: translateX(12px);
-}
-
-.trail-heading span:nth-child(6) {
   padding-left: 12px;
-  transform: translateX(-12px);
-}
-
-.trail-heading span:nth-child(7) {
-  text-align: center;
-  transform: translateX(-12px);
 }
 
 .trail-heading {
@@ -238,7 +234,7 @@ main {
   font-size: 0.8rem;
   font-weight: 800;
   gap: 8px;
-  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) auto;
+  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) 280px;
   padding: 10px 12px 10px 16px;
   text-transform: uppercase;
 }
@@ -252,7 +248,7 @@ main {
   display: grid;
   position: relative; /* anchors .trail-stats-tip */
   gap: 8px;
-  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) auto;
+  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) 280px;
   min-height: 44px;
   padding: 6px 12px 6px 16px;
 }
