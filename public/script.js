@@ -174,14 +174,19 @@ function render() {
 // --- Trail stats (generated from Trailforks by scripts/extract-trail-stats.js) ---
 
 // Difficulty is a 0.5-3.5 mean: white .5, green 1, blue 2, black 3, dbl black
-// and pro 3.5. Shown against the top of the scale so the number reads clearly.
-const DIFFICULTY_MAX = 3.5;
-// At or below this, the trailhead is called out as beginner-friendly by name.
-const BEGINNER_MAX = 1.4;
+// and pro 3.5. Each trailhead is named by band so the number has a plain-English
+// anchor; upper bound first match wins.
+const DIFFICULTY_BANDS = [
+  [1.4, "Beginner"],
+  [2.2, "Intermediate"],
+  [2.8, "Advanced"],
+  [Infinity, "Expert"]
+];
 
 function difficultyText(avg) {
   const n = avg.toFixed(1); // keep 1dp so a flat 1 reads "1.0", not "1"
-  return avg <= BEGINNER_MAX ? `Beginner ${n}` : `${n} / ${DIFFICULTY_MAX}`;
+  const [, band] = DIFFICULTY_BANDS.find(([max]) => avg <= max);
+  return `${band} ${n}`;
 }
 
 // variant "popup" is the map detail popup, which drops the trail count and
