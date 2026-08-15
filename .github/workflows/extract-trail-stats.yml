@@ -7,8 +7,14 @@ name: Extract Trail Stats
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: 'What to run'
+        required: true
+        type: choice
+        default: '--all'
+        options: ['--all', '--dump']
       keys:
-        description: 'Trail keys to dump, space separated (e.g. "quanah-hill big-cedar")'
+        description: 'Trail keys for --dump, space separated (ignored by --all)'
         required: false
         default: 'quanah-hill'
 
@@ -20,11 +26,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      # KEYS goes through env, not direct ${{ }} interpolation, so the input
+      # MODE/KEYS go through env, not direct ${{ }} interpolation, so the inputs
       # cannot inject shell commands into the run step.
-      - run: node scripts/extract-trail-stats.js --dump $KEYS
+      - run: node scripts/extract-trail-stats.js "$MODE" $KEYS
         env:
-          KEYS: ${{ github.event.inputs.keys }}
+          MODE: ${{ inputs.mode }}
+          KEYS: ${{ inputs.mode == '--dump' && inputs.keys || '' }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
