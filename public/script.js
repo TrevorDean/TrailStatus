@@ -1,6 +1,16 @@
 import { TRAILS as trails } from "/trails.js";
 import { TRAIL_STATS } from "/trail-stats.js";
 
+// Staging-only visual marker so the two environments are easy to tell apart.
+if (location.hostname.includes("staging")) {
+  const h1 = document.querySelector("h1");
+  if (h1) {
+    h1.textContent += " STAGING";
+    h1.classList.add("staging-title");
+  }
+  document.title += " STAGING";
+}
+
 const SECTION_ORDER = ["North Dallas Region", "East Dallas Region", "South Dallas Region", "Mid-Cities Region", "Far North Region", "Fort Worth", "Tyler", "Waco", "Weatherford"];
 
 const SECTION_DISPLAY = {
@@ -283,6 +293,21 @@ function markerClassFor(status) {
   return statusClassFor(status).replace("status-", "marker-");
 }
 
+// Prefer the Trailforks parking coordinates for the marker; fall back to the
+// trail's approximate geocoded position when no parking link was found.
+function markerLatLng(trail) {
+  const lat = typeof trail.parkingLat === "number" ? trail.parkingLat : trail.lat;
+  const lng = typeof trail.parkingLng === "number" ? trail.parkingLng : trail.lng;
+  return [lat, lng];
+}
+
+// Google Maps driving directions to the trail's parking lot, using the same
+// coordinates Trailforks links to. Null when we have no real parking pin.
+function parkingDirectionsUrl(trail) {
+  if (typeof trail.parkingLat !== "number" || typeof trail.parkingLng !== "number") return null;
+  return `https://www.google.com/maps/dir/?api=1&destination=${trail.parkingLat},${trail.parkingLng}`;
+}
+
 function mapPopupHtml(trail) {
   const current = statuses[trail.key];
   const status = current?.status || "Loading";
@@ -292,14 +317,22 @@ function mapPopupHtml(trail) {
   const linkText = statusUrl.includes("trailforks.com") ? "Trailforks" : "Find status";
   const city = trail.displayCity || statuses[trail.key]?.city || trail.city;
   const lta = renderLTA(statuses[trail.key]?.lta || trail.lta || "Unknown");
+  const parkingUrl = parkingDirectionsUrl(trail);
+  const parkingLink = parkingUrl
+    ? `<a class="map-popup-link map-popup-parking" href="${parkingUrl}" target="_blank" rel="noopener">🅿️ Directions to parking</a>`
+    : "";
   return `
     <div class="map-popup">
       <a class="map-popup-name" href="${trail.url}" target="_blank" rel="noopener">${trail.name}</a>
-      <div class="map-popup-row"><span class="status-pill ${statusClass}">${status}</span><span class="map-popup-updated">${updated}</span></div>
-      <div class="map-popup-meta">${city}</div>
-      <div class="map-popup-meta">Trail org: ${lta}</div>
+      <div class="map-popup-row"><span class="status-pill ${statusClass}">${status}</span></div>
+      <div class="map-popup-meta"><strong>Updated:</strong> ${updated}</div>
+      <div class="map-popup-meta"><strong>City:</strong> ${city}</div>
+      <div class="map-popup-meta"><strong>Trail org:</strong> ${lta}</div>
       ${statsPopupHtml(trail)}
-      <a class="map-popup-link" href="${statusUrl}" target="_blank" rel="noopener">${linkText}</a>
+      <div class="map-popup-links">
+        <a class="map-popup-link" href="${statusUrl}" target="_blank" rel="noopener">${linkText}</a>
+        ${parkingLink}
+      </div>
     </div>
   `;
 }
@@ -307,9 +340,10 @@ function mapPopupHtml(trail) {
 function renderMap(fitBounds = true) {
   if (!map || !markerLayer) return;
   markerLayer.clearLayers();
-  const visible = getVisibleTrails().filter(
-    (t) => typeof t.lat === "number" && typeof t.lng === "number"
-  );
+  const visible = getVisibleTrails().filter((t) => {
+    const [lat, lng] = markerLatLng(t);
+    return typeof lat === "number" && typeof lng === "number";
+  });
   const points = [];
   visible.forEach((trail) => {
     const status = statuses[trail.key]?.status || "Loading";
@@ -320,13 +354,14 @@ function renderMap(fitBounds = true) {
       iconAnchor: [9, 9],
       popupAnchor: [0, -9]
     });
+    const latLng = markerLatLng(trail);
     // bindTooltip, not the native `title` attribute: the browser delays title
     // tooltips ~1s, whereas Leaflet shows this the instant the pointer lands.
-    const marker = L.marker([trail.lat, trail.lng], { icon })
+    const marker = L.marker(latLng, { icon })
       .bindTooltip(`${trail.name}: ${status}`, { direction: "top", offset: [0, -10], className: "trail-marker-tip" })
       .bindPopup(mapPopupHtml(trail));
     markerLayer.addLayer(marker);
-    points.push([trail.lat, trail.lng]);
+    points.push(latLng);
   });
   if (fitBounds && points.length) {
     map.fitBounds(points, { padding: [40, 40], maxZoom: 12 });

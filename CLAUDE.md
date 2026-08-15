@@ -63,7 +63,9 @@ This replaced an earlier arrangement where the list was copy-pasted across four 
 
 All in `public/script.js` + `public/index.html`, no framework:
 
-- **List / Map toggle** (`[data-view]`). Map view is Leaflet over OpenStreetMap, vendored in `public/vendor/leaflet/` — not a CDN. Markers are `L.divIcon`s coloured by status, built in `renderMap()`; `ensureMap()` lazily initialises the map on first switch to the map view. A trailhead only appears on the map if its `trails.js` entry has `lat`/`lng`.
+- **List / Map toggle** (`[data-view]`). Map view is Leaflet over OpenStreetMap, vendored in `public/vendor/leaflet/` — not a CDN. Markers are `L.divIcon`s coloured by status, built in `renderMap()`; `ensureMap()` lazily initialises the map on first switch to the map view.
+- **Parking** — markers are placed at the trailhead's parking lot when known: `markerLatLng()` prefers `parkingLat`/`parkingLng` over `lat`/`lng`, and `parkingDirectionsUrl()` builds a Google Maps directions link shown in the popup. All 58 trailheads currently have parking coordinates, scraped by `scripts/extract-parking.js`.
+- **Staging marker** — `script.js` appends "STAGING" to the `h1` and page title when the hostname contains `staging`, so the two environments are distinguishable at a glance.
 - **Favorites** — starred trails persist in `localStorage` under `ntxmtb-favorites` and render in a "Favorites" section above the city groups.
 - **Collapsible sections** — clicking a section heading collapses it; state lives in `collapsedSections` (favorites uses the sentinel key `__favorites__`).
 - **Filters** — region (`[data-filter]`), status (`[data-status-filter]`: All / Open+Caution / Closed), and a free-text search over trail and city names. `getVisibleTrails()` applies all three, and both views render from it.

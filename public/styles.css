@@ -79,12 +79,19 @@ main {
 }
 
 .controls {
-  align-items: start;
-  display: grid;
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
   gap: 18px;
-  grid-template-columns: minmax(220px, 1fr) auto auto;
   margin-bottom: 12px;
 }
+
+/* View, Search and Status sit together on the first row; Region drops below. */
+.search-field-wrap { flex: 0 1 300px; }
+.region-wrap { flex-basis: 100%; }
+
+/* Staging environment marker (applied by script.js on the staging host). */
+.staging-title { color: #e02424; }
 
 .search-wrap {
   display: grid;
@@ -881,13 +888,32 @@ main {
 }
 .map-popup-updated { color: var(--muted); font-size: 0.78rem; }
 .map-popup-meta { color: var(--muted); }
+.map-popup-meta strong { color: var(--ink); font-weight: 700; }
 .map-popup-meta a { color: var(--accent); }
-.map-popup-link {
+.map-popup-links {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 4px;
+}
+.leaflet-popup-content .map-popup-link {
   align-self: flex-start;
-  margin-top: 2px;
   font-weight: 700;
   color: var(--accent);
 }
+.leaflet-popup-content .map-popup-parking {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: #e7efe9;
+  border: 1px solid var(--line);
+  color: #111;
+  font-weight: 700;
+  text-decoration: none;
+}
+.leaflet-popup-content .map-popup-parking:hover { background: #d7e3da; }
 .leaflet-popup-content { margin: 12px 14px; }
 
 @media (max-width: 760px) {
