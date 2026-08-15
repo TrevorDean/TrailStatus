@@ -1,5 +1,15 @@
 import { TRAILS as trails } from "/trails.js";
 
+// Staging-only visual marker so the two environments are easy to tell apart.
+if (location.hostname.includes("staging")) {
+  const h1 = document.querySelector("h1");
+  if (h1) {
+    h1.textContent += " STAGING";
+    h1.classList.add("staging-title");
+  }
+  document.title += " STAGING";
+}
+
 const SECTION_ORDER = ["North Dallas Region", "East Dallas Region", "South Dallas Region", "Mid-Cities Region", "Far North Region", "Fort Worth", "Tyler", "Waco", "Weatherford"];
 
 const SECTION_DISPLAY = {

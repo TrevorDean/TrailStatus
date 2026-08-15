@@ -79,12 +79,19 @@ main {
 }
 
 .controls {
-  align-items: start;
-  display: grid;
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
   gap: 18px;
-  grid-template-columns: minmax(220px, 1fr) auto auto;
   margin-bottom: 12px;
 }
+
+/* View, Search and Status sit together on the first row; Region drops below. */
+.search-field-wrap { flex: 0 1 300px; }
+.region-wrap { flex-basis: 100%; }
+
+/* Staging environment marker (applied by script.js on the staging host). */
+.staging-title { color: #e02424; }
 
 .search-wrap {
   display: grid;
