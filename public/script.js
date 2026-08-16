@@ -61,6 +61,53 @@ function saveFavorites() {
   localStorage.setItem('ntxmtb-favorites', JSON.stringify([...favoritedTrails]));
 }
 
+// --- Filter persistence -----------------------------------------------------
+// Region, status, difficulty and search survive a reload, so a returning rider
+// keeps the area and grade they ride. The VIEW is deliberately not stored: the
+// site should always open on the map (see DEFAULT_VIEW).
+const FILTERS_KEY = 'ntxmtb-filters';
+
+function saveFilters() {
+  localStorage.setItem(FILTERS_KEY, JSON.stringify({
+    regions: [...activeFilters],
+    status: activeStatusFilter,
+    difficulty: activeDifficulty,
+    search: searchEl.value
+  }));
+}
+
+// Reflect current filter state onto the controls. Also used on restore, so the
+// buttons can never disagree with the state they represent.
+function syncFilterControls() {
+  filterButtons.forEach((btn) => {
+    const f = btn.dataset.filter;
+    btn.classList.toggle("active", f === "all" ? activeFilters.size === 0 : activeFilters.has(f));
+  });
+  statusFilterButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.statusFilter === activeStatusFilter));
+  difficultyButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.difficulty === activeDifficulty));
+  searchClearEl.classList.toggle("hidden", searchEl.value === "");
+}
+
+function restoreFilters() {
+  let saved = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(FILTERS_KEY) || 'null');
+  } catch {
+    saved = null; // corrupt entry: fall back to defaults rather than throwing
+  }
+  if (saved) {
+    // Only accept values the controls still offer. A region renamed in
+    // trails.js or a retired difficulty band would otherwise leave someone
+    // filtered to nothing with no active button explaining why.
+    const regions = new Set(filterButtons.map((b) => b.dataset.filter));
+    for (const r of saved.regions || []) if (regions.has(r) && r !== "all") activeFilters.add(r);
+    if (statusFilterButtons.some((b) => b.dataset.statusFilter === saved.status)) activeStatusFilter = saved.status;
+    if (difficultyButtons.some((b) => b.dataset.difficulty === saved.difficulty)) activeDifficulty = saved.difficulty;
+    if (typeof saved.search === "string") searchEl.value = saved.search;
+  }
+  syncFilterControls();
+}
+
 groupsEl.addEventListener("click", (e) => {
   const favBtn = e.target.closest(".fav-btn");
   if (favBtn) {
@@ -535,10 +582,8 @@ filterButtons.forEach((button) => {
         collapsedSections.delete(filter);
       }
     }
-    filterButtons.forEach((btn) => {
-      const f = btn.dataset.filter;
-      btn.classList.toggle("active", f === "all" ? activeFilters.size === 0 : activeFilters.has(f));
-    });
+    syncFilterControls();
+    saveFilters();
     renderCurrentView();
   });
 });
@@ -547,6 +592,7 @@ statusFilterButtons.forEach((button) => {
   button.addEventListener("click", () => {
     activeStatusFilter = button.dataset.statusFilter;
     statusFilterButtons.forEach((item) => item.classList.toggle("active", item === button));
+    saveFilters();
     renderCurrentView();
   });
 });
@@ -555,6 +601,7 @@ difficultyButtons.forEach((button) => {
   button.addEventListener("click", () => {
     activeDifficulty = button.dataset.difficulty;
     difficultyButtons.forEach((item) => item.classList.toggle("active", item === button));
+    saveFilters();
     renderCurrentView(); // a filter, so it thins the map markers too
   });
 });
@@ -563,6 +610,7 @@ const searchClearEl = document.querySelector("#search-clear");
 
 searchEl.addEventListener("input", () => {
   searchClearEl.classList.toggle("hidden", searchEl.value === "");
+  saveFilters();
   renderCurrentView();
 });
 
@@ -570,8 +618,10 @@ searchClearEl.addEventListener("click", () => {
   searchEl.value = "";
   searchClearEl.classList.add("hidden");
   searchEl.focus();
+  saveFilters();
   renderCurrentView();
 });
+restoreFilters(); // before the first render, so it draws the saved selection
 setView(DEFAULT_VIEW);
 loadStatuses();
 
