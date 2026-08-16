@@ -45,10 +45,13 @@ let activeFilters = new Set();
 let activeStatusFilter = "all";
 let activeDifficulty = "all";
 let statuses = {};
-// The view the site opens on. index.html's markup (active button, hidden
-// classes) must match this, or there's a flash of the wrong view before JS runs.
+// The view a FIRST-TIME visitor opens on; afterwards the saved view wins.
+// index.html's markup (active button, hidden classes) must match this, or
+// first-time visitors get a flash of the wrong view before JS runs.
 const DEFAULT_VIEW = "map";
 let currentView = DEFAULT_VIEW;
+// Resolved by restoreFilters() before the first setView() call.
+let startView = DEFAULT_VIEW;
 const collapsedSections = new Set();
 // Trail keys whose mobile stats panel is expanded. Deliberately in memory only,
 // like collapsedSections — this is transient "look at this one" state, not a
@@ -62,13 +65,13 @@ function saveFavorites() {
 }
 
 // --- Filter persistence -----------------------------------------------------
-// Region, status, difficulty and search survive a reload, so a returning rider
-// keeps the area and grade they ride. The VIEW is deliberately not stored: the
-// site should always open on the map (see DEFAULT_VIEW).
+// View, region, status, difficulty and search all survive a reload, so a
+// returning rider keeps the area and grade they ride, and the view they left in.
 const FILTERS_KEY = 'ntxmtb-filters';
 
 function saveFilters() {
   localStorage.setItem(FILTERS_KEY, JSON.stringify({
+    view: currentView,
     regions: [...activeFilters],
     status: activeStatusFilter,
     difficulty: activeDifficulty,
@@ -104,6 +107,7 @@ function restoreFilters() {
     if (statusFilterButtons.some((b) => b.dataset.statusFilter === saved.status)) activeStatusFilter = saved.status;
     if (difficultyButtons.some((b) => b.dataset.difficulty === saved.difficulty)) activeDifficulty = saved.difficulty;
     if (typeof saved.search === "string") searchEl.value = saved.search;
+    if (viewButtons.some((b) => b.dataset.view === saved.view)) startView = saved.view;
   }
   syncFilterControls();
 }
@@ -565,7 +569,12 @@ function setView(view) {
 }
 
 viewButtons.forEach((button) => {
-  button.addEventListener("click", () => setView(button.dataset.view));
+  button.addEventListener("click", () => {
+    setView(button.dataset.view);
+    // Saved here rather than inside setView(), so the initial render doesn't
+    // write storage for a visitor who never touches a control.
+    saveFilters();
+  });
 });
 
 filterButtons.forEach((button) => {
@@ -622,7 +631,7 @@ searchClearEl.addEventListener("click", () => {
   renderCurrentView();
 });
 restoreFilters(); // before the first render, so it draws the saved selection
-setView(DEFAULT_VIEW);
+setView(startView); // saved view if there is one, otherwise DEFAULT_VIEW
 loadStatuses();
 
 const infoBtn = document.getElementById('info-btn');
