@@ -57,6 +57,13 @@ Scraping originally ran as a scheduled Cloudflare Worker (`cron-worker/`), but w
 
 **Adding or changing a trail is one entry in `public/trails.js`.** Add the org to `LTA_LINKS` in `public/script.js` too if it is a new one. The `batch: 1 | 2` field decides which staggered cron job scrapes it; `type: "region" | "trail"` selects the parse strategy. `key` is the join key against KV.
 
+Two optional fields are **hand-maintained and never regenerated** by the stats sweep, so they are easy to overlook:
+
+| field | when to use it |
+| --- | --- |
+| `difficulty` | Override the computed band when Trailforks' ratings are wrong. `"Beginner" \| "Intermediate" \| "Expert"`. 12 entries currently use this. |
+| `statsUrl` | When the trail-listing page isn't `url + "/trails/"` — e.g. a single-trail entry that still has a region listing. Used by `trinity-track` (Willow Park) and `western-heritage-park`. |
+
 This replaced an earlier arrangement where the list was copy-pasted across four files. `public/_worker.js` no longer exists — local dev and production both run `worker.js` now.
 
 ## Frontend features
@@ -68,8 +75,16 @@ All in `public/script.js` + `public/index.html`, no framework:
 - **Staging marker** — `script.js` appends "STAGING" to the `h1` and page title when the hostname contains `staging`, so the two environments are distinguishable at a glance.
 - **Favorites** — starred trails persist in `localStorage` under `ntxmtb-favorites` and render in a "Favorites" section above the city groups.
 - **Collapsible sections** — clicking a section heading collapses it; state lives in `collapsedSections` (favorites uses the sentinel key `__favorites__`).
-- **Filters** — region (`[data-filter]`), status (`[data-status-filter]`: All / Open+Caution / Closed), difficulty (`[data-difficulty]`: All / Beginner / Intermediate / Expert), and a free-text search over trail and city names. `getVisibleTrails()` applies all four, and both views render from it.
+- **Filters** — region (`[data-filter]`), status (`[data-status-filter]`: All / Open+Caution / Closed), Avg Difficulty (`[data-difficulty]`: All / Beginner / Intermediate / Expert), and a free-text search over trail and city names. `getVisibleTrails()` applies all four, and both views render from it.
+- **Persistence** — the four filters *and the view* round-trip through `localStorage` under `ntxmtb-filters`, restored by `restoreFilters()` before the first render. Restored values are validated against the controls that still exist, so a renamed region or retired band can't strand someone on an empty list; a corrupt entry falls back to defaults rather than throwing during module init. Saving happens in the click handlers, **not** in `setView()`, so a visit with no interaction writes nothing.
+- **Default view** — `DEFAULT_VIEW` is `"map"`, but it is the **first-visit** default only; a saved view wins. `index.html`'s initial markup (active button, `hidden` classes) must match `DEFAULT_VIEW` or first-time visitors get a flash of the wrong view.
 - **Info and Donate modals**, closed by backdrop click or Escape.
+
+### The list-view grid has a footgun
+
+Columns are `Trail Name | Status | Updated | City | Avg Difficulty | Trail Org | Trail Info and Directions`. The heading row and the data rows are **two separate CSS grids** that only line up if every track resolves identically — so the template must contain **no content-sized (`auto` / `max-content`) track**. The last track once was `auto`, sizing to the word "DIRECTIONS" in the heading but to two buttons in a row; the difference was redistributed across the `fr` tracks and every column drifted. It is a fixed `280px` now.
+
+For the same reason, heading nudges are addressed as explicit `nth-child(n)` positions rather than `:last-child` / `:nth-last-child(2)`, which silently re-target themselves whenever a column is added.
 
 ## Trail stats (difficulty rating, mileage, climb)
 
@@ -83,15 +98,54 @@ All in `public/script.js` + `public/index.html`, no framework:
 | `ftPerMile` | `totalClimbFt / totalMiles`, nearest foot |
 | `trailCount` / `ratedCount` | sub-trails found / of those, ones with a difficulty |
 
-`avgDifficulty` is displayed as a band name plus the number ("Intermediate 1.8"), from `DIFFICULTY_BANDS`: Beginner ≤1.4, Intermediate ≤2.2, Expert above. **Those bands and the Difficulty filter's options must stay in step** — a band with no matching option is unreachable, and an option with no band is permanently empty. Current spread is 20 / 33 / 2.
+### Displayed difficulty: bands, and hand-set overrides
 
-Unrated sub-trails are excluded from `avgDifficulty` but still count toward distance and climb. Trailheads whose Trailforks page lists no sub-trails are **omitted from `TRAIL_STATS` entirely** rather than stored as zeroes — `statsRows()` returns `null` for them and no tooltip is rendered, so any new consumer must handle a missing key.
+**`avgDifficulty` is never shown.** It stays in the data for re-banding and
+debugging, but the UI shows only a band name — "Intermediate", not "Intermediate 1.8".
 
-Shown in three places: a hover tooltip on the trail name in list view, a stats block in the map popup, and (name only) an instant marker tooltip.
+`difficultyLabel(trail)` resolves it, and this is the important part:
 
-**Both hovers must feel instant.** Two traps here, both already worked around — keep them in mind if you touch this:
+1. if the `trails.js` entry has a **`difficulty`** field, that wins outright;
+2. otherwise the band comes from `DIFFICULTY_BANDS` — Beginner ≤1.4, Intermediate ≤2.2, Expert above;
+3. otherwise `null` (no stats and no override).
+
+**Trailforks rates a number of these parks wrongly, so 12 of 58 currently carry a
+manual `difficulty` override.** Expect the displayed band to disagree with
+`avgDifficulty` — that is the system working, not a bug. Overrides live in
+`trails.js`, which the sweep never regenerates, so they survive a re-scrape;
+`trail-stats.js` is regenerated and must never hold them.
+
+Current spread: **21 Beginner / 28 Intermediate / 9 Expert**.
+
+**The bands and the Avg Difficulty filter's options must stay in step** — a band
+with no matching option is unreachable, and an option with no band is permanently
+empty. (An earlier four-band scheme had exactly this problem: "Expert" matched
+nothing and two "Advanced" parks were unreachable.) The filter reads
+`difficultyLabel()` too, so an overridden trailhead filters where it reads.
+
+Unrated sub-trails are excluded from `avgDifficulty` but still count toward distance
+and climb. Trailheads whose Trailforks page lists no sub-trails are **omitted from
+`TRAIL_STATS` entirely** rather than stored as zeroes — `statsRows()` returns `null`
+for them, so any new consumer must handle a missing key. One trailhead is in this
+state: `erwin-park-skill-park`, which has an override so it still shows a band, but
+has no stats panel.
+
+### Where stats appear
+
+Four places: the **Avg Difficulty column** in list view (band name only), a **hover
+tooltip** on the trail name (desktop), a **stats block in the map popup**, and the
+**marker hover** (name + miles + climb, no status).
+
+**Both hovers must feel instant.** Two traps, both already worked around:
 - The list tooltip is anchored to `.trail-row`, *not* `.trail-name-cell`, because that cell sets `overflow: hidden` and would clip it. It uses `transition: opacity 0s`.
 - Map markers use Leaflet's `bindTooltip`, *not* the native `title` attribute — browsers delay `title` tooltips about a second.
+
+**Touch devices have no hover**, so at ≤760px each row grows an **ⓘ button**
+(`.stats-btn`) that toggles the same panel in-flow; desktop is untouched. Three
+things about it that are easy to break:
+- The button is derived from `statsTipHtml()`'s return value, so a trailhead with no stats offers no toggle.
+- Open state lives in the `openStats` Set, **not** in the DOM: a favourite toggle calls `render()` and rebuilds every row, which would otherwise wipe it.
+- A favourited trail **renders twice** (Favorites block *and* its city section), so the handler updates every `.trail-row[data-key=…]`. This is also why there is no `aria-controls` — the id would be duplicated.
 
 ## Maintenance tooling (GitHub Actions only)
 
@@ -112,5 +166,14 @@ Three things about the Trailforks trail table that are easy to get wrong:
 1. **Distance must come from the `data-v` attribute (metres), not the rendered text.** The table rounds to whole miles, so "3 miles" is really 2.906 mi; summing displayed values overstated one park by 12%.
 2. **Difficulty must be keyed off `data-sort`, not the CSS class.** Black and double black are both `class="dicon_small dblack"` and differ only by `data-sort` 7 vs 8.
 3. **The listing paginates at 100 trails** via `?page=N`. Cameron Park has 127 and silently truncated before pagination was followed.
+4. **Column order is not fixed.** Most listings have 7 columns, but some (Willow Park) insert a "riding area" column. `parseTrailRows()` resolves columns from the **header row's labels**, and finds the status/difficulty icons by CSS class anywhere in the row. Reading by fixed position produced 0 miles and *negative* climb on the 8-column page.
+
+Note `--local` only ever sees the **first page** of a paginated listing, since only page 1 is written to `dump/`. It under-reports Cameron Park (100 vs the true 127); trust `--all` for counts.
+
+## Verifying frontend changes
+
+There is no test framework, but `dump/` (gitignored) holds jsdom harnesses that boot `public/script.js` with Leaflet and `fetch` stubbed: `verify-column.mjs` (grid/cell alignment), `verify-grid.mjs` (CSS-as-text: identical templates, no content-sized tracks), `verify-filter.mjs` (filter counts vs expected bands), `verify-links.mjs`, `verify-default-view.mjs`, `verify-stats-toggle.mjs` (mobile ⓘ, including that open panels survive the `render()` a star tap forces), and `verify-filter-persist.mjs` (boots the page twice against one shared `localStorage` to simulate a reload).
+
+**What they cannot do:** the harnesses construct `JSDOM` without `resources: "usable"`, so `styles.css` is never loaded — no computed styles, no media-query evaluation, no layout, no `:hover`. Anything visual still needs a real browser, and headless Chromium can't be installed here without sudo.
 
 Climb has no `data-v` and is read from text; it is occasionally missing upstream (Big Cedar's Pitbull has an empty climb cell) and counts as 0.
