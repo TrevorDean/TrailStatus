@@ -329,13 +329,26 @@ function difficultyCell(trail) {
   return difficultyLabel(trail) ?? "—";
 }
 
-// List-view Parking column. Same Google Maps directions link the map popup
+// List-view Parking column. Same Google Maps directions links the map popup
 // uses; renders an inert placeholder when a trailhead has no parking pin, so
 // the grid keeps its column count.
+//
+// A trailhead with several lots gets one numbered button each, labelled by
+// position rather than name — the names vary in length and the last grid track
+// is a fixed 280px, so anything content-sized would overflow it. The full name
+// lives in the title/aria-label, and the map popup spells them out.
 function parkingCell(trail) {
-  const url = parkingDirectionsUrl(trail);
-  if (!url) return `<span class="parking-link parking-none">—</span>`;
-  return `<a class="parking-link" href="${url}" target="_blank" rel="noopener" title="Directions to parking">🅿️ Directions</a>`;
+  const lots = parkingLots(trail);
+  if (lots.length === 0) return `<span class="parking-link parking-none">—</span>`;
+  if (lots.length === 1) {
+    return `<a class="parking-link" href="${parkingDirectionsUrl(lots[0])}" target="_blank" rel="noopener" title="Directions to parking">🅿️ Directions</a>`;
+  }
+  return lots
+    .map((lot, i) => {
+      const label = lot.name || `Parking ${i + 1}`;
+      return `<a class="parking-link parking-multi" href="${parkingDirectionsUrl(lot)}" target="_blank" rel="noopener" title="Directions to ${label}" aria-label="Directions to ${label}">🅿️${i + 1}</a>`;
+    })
+    .join("");
 }
 
 // Map marker hover: name plus the two headline numbers, no status (the marker
@@ -446,19 +459,38 @@ function markerClassFor(status) {
   return statusClassFor(status).replace("status-", "marker-");
 }
 
-// Prefer the Trailforks parking coordinates for the marker; fall back to the
-// trail's approximate geocoded position when no parking link was found.
-function markerLatLng(trail) {
-  const lat = typeof trail.parkingLat === "number" ? trail.parkingLat : trail.lat;
-  const lng = typeof trail.parkingLng === "number" ? trail.parkingLng : trail.lng;
-  return [lat, lng];
+// Normalises the two shapes trails.js allows into one array, so every consumer
+// below can ignore the difference: a multi-lot entry carries `parking`
+// [{ name, lat, lng }, ...]; the other 57 carry a single parkingLat/parkingLng
+// and become a one-element array with no name. Empty when there is no pin at all.
+// Order is meaningful — the first lot is the primary one.
+function parkingLots(trail) {
+  if (Array.isArray(trail.parking)) {
+    return trail.parking.filter(p => typeof p.lat === "number" && typeof p.lng === "number");
+  }
+  if (typeof trail.parkingLat === "number" && typeof trail.parkingLng === "number") {
+    return [{ name: "", lat: trail.parkingLat, lng: trail.parkingLng }];
+  }
+  return [];
 }
 
-// Google Maps driving directions to the trail's parking lot, using the same
-// coordinates Trailforks links to. Null when we have no real parking pin.
-function parkingDirectionsUrl(trail) {
-  if (typeof trail.parkingLat !== "number" || typeof trail.parkingLng !== "number") return null;
-  return `https://www.google.com/maps/dir/?api=1&destination=${trail.parkingLat},${trail.parkingLng}`;
+// Prefer the parking coordinates for the marker; fall back to the trail's
+// approximate geocoded position when no parking pin was found. One trailhead is
+// still one marker, so with several lots exactly one is pinned: the lot flagged
+// `primary`, else the first. The flag exists because display order and marker
+// position are different questions — Northshore lists its lots in the order a
+// rider would consider them, but only lot 2 is actually on the trail (lot 1 is
+// 3.4 km away), so ordering the array to fix the marker would misnumber the
+// buttons.
+function markerLatLng(trail) {
+  const lots = parkingLots(trail);
+  const pin = lots.find(lot => lot.primary) || lots[0];
+  return pin ? [pin.lat, pin.lng] : [trail.lat, trail.lng];
+}
+
+// Google Maps driving directions to one parking lot.
+function parkingDirectionsUrl(lot) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${lot.lat},${lot.lng}`;
 }
 
 function mapPopupHtml(trail) {
@@ -470,10 +502,18 @@ function mapPopupHtml(trail) {
   const linkText = statusUrl.includes("trailforks.com") ? "Trailforks" : "Find status";
   const city = trail.displayCity || statuses[trail.key]?.city || trail.city;
   const lta = renderLTA(statuses[trail.key]?.lta || trail.lta || "Unknown");
-  const parkingUrl = parkingDirectionsUrl(trail);
-  const parkingLink = parkingUrl
-    ? `<a class="map-popup-link map-popup-parking" href="${parkingUrl}" target="_blank" rel="noopener">🅿️ Directions to parking</a>`
-    : "";
+  // One lot keeps the original single link; several are spelled out by name,
+  // since the popup has room the list-view column does not.
+  const lots = parkingLots(trail);
+  const parkingLink = lots
+    .map((lot, i) => {
+      const label = lots.length === 1
+        ? "Directions to parking"
+        : `${lot.name || `Parking ${i + 1}`}`;
+      const cls = lots.length === 1 ? "" : " map-popup-parking-multi";
+      return `<a class="map-popup-link map-popup-parking${cls}" href="${parkingDirectionsUrl(lot)}" target="_blank" rel="noopener">🅿️ ${label}</a>`;
+    })
+    .join("");
   return `
     <div class="map-popup">
       <a class="map-popup-name" href="${trail.url}" target="_blank" rel="noopener">${trail.name}</a>

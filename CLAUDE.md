@@ -57,12 +57,47 @@ Scraping originally ran as a scheduled Cloudflare Worker (`cron-worker/`), but w
 
 **Adding or changing a trail is one entry in `public/trails.js`.** Add the org to `LTA_LINKS` in `public/script.js` too if it is a new one. The `batch: 1 | 2` field decides which staggered cron job scrapes it; `type: "region" | "trail"` selects the parse strategy. `key` is the join key against KV.
 
-Two optional fields are **hand-maintained and never regenerated** by the stats sweep, so they are easy to overlook:
+Three optional fields are **hand-maintained and never regenerated** by a sweep, so they are easy to overlook:
 
 | field | when to use it |
 | --- | --- |
 | `difficulty` | Override the computed band when Trailforks' ratings are wrong. `"Beginner" \| "Intermediate" \| "Expert"`. 12 entries currently use this. |
 | `statsUrl` | When the trail-listing page isn't `url + "/trails/"` — e.g. a single-trail entry that still has a region listing. Used by `trinity-track` (Willow Park) and `western-heritage-park`. |
+| `parkingSource` | `"manual"` on any entry whose `parkingLat`/`parkingLng` were corrected by hand. 1 entry currently uses this (`marion-sansom`). |
+
+### `parkingSource: "manual"` — do not overwrite these
+
+`difficulty` and `statsUrl` are safe because the stats sweep regenerates
+`trail-stats.js`, not `trails.js`. **Parking is different**: `extract-parking.js`
+emits coordinates for *every* trail, and those get spliced into `trails.js`
+by hand from the run log. A trailhead corrected by hand will be handed back to
+you as the original wrong value on the next sweep, and splicing the whole batch
+in will silently revert the fix.
+
+`parkingSource: "manual"` is the marker that prevents that. **When splicing
+parking results, skip every entry that carries it** — the scraped value for those
+is known-bad, not a candidate. A `parking` array always implies it, since
+`extract-parking.js` can only ever emit a single lot per trailhead.
+
+The case that motivated the field: Trailforks' pin for **Marion Sansom** was
+8.12 km from the park, stale rather than merely imprecise. Since `markerLatLng()`
+prefers parking coords over `lat`/`lng`, that put the *map marker* in the wrong
+place too, not just the directions link. It was corrected by hand to
+2501 Roberts Cut Off Rd, Fort Worth (commit `fd3df43`).
+
+Trailforks is the only parking source, so **staleness upstream is invisible from
+inside the repo** — a wrong pin looks exactly like a right one. Corrections come
+from spotting them in the real world; the field exists so a correction sticks.
+
+Note `lat`/`lng` cannot be used to check parking coords. They are not surveyed
+trailhead positions — commit `1ff5e21` geocoded them from each trail's `city`
+field via Nominatim, and about 17 of 58 are city-center approximations. Four of
+the `city` values ("North Dallas Region", "Far North Region", "South Dallas
+Region", "East Dallas Region", "Mid-Cities Region") aren't real places, so those
+fell back to a metro centroid: `katie-jackson-park-dorba`'s `lat`/`lng` is 0.05 km
+from downtown Dallas, 25.7 km from its parking pin — and there the *parking* is
+the correct one. 23 of 58 pairs are >2 km apart, so the comparison flags 40% of
+the dataset without indicating which side is wrong.
 
 This replaced an earlier arrangement where the list was copy-pasted across four files. `public/_worker.js` no longer exists — local dev and production both run `worker.js` now.
 
@@ -71,7 +106,8 @@ This replaced an earlier arrangement where the list was copy-pasted across four 
 All in `public/script.js` + `public/index.html`, no framework:
 
 - **List / Map toggle** (`[data-view]`). Map view is Leaflet over OpenStreetMap, vendored in `public/vendor/leaflet/` — not a CDN. Markers are `L.divIcon`s coloured by status, built in `renderMap()`; `ensureMap()` lazily initialises the map on first switch to the map view.
-- **Parking** — markers are placed at the trailhead's parking lot when known: `markerLatLng()` prefers `parkingLat`/`parkingLng` over `lat`/`lng`, and `parkingDirectionsUrl()` builds a Google Maps directions link shown in the popup. All 58 trailheads currently have parking coordinates, scraped by `scripts/extract-parking.js`.
+- **Parking** — markers are placed at the trailhead's parking lot when known. `parkingLots(trail)` is the one accessor: it normalises both data shapes into an array of `{ name, lat, lng }`, so nothing downstream has to branch. `markerLatLng()` pins the lot flagged `primary` (else the first) and falls back to `lat`/`lng`; `parkingDirectionsUrl(lot)` takes a lot (not a trail) and builds the Google Maps link. All 58 trailheads currently have parking coordinates — 56 scraped by `scripts/extract-parking.js`, 2 hand-maintained and flagged `parkingSource: "manual"` (`marion-sansom`, `northshore`).
+- **Trailheads with more than one lot** use `parking: [{ name, lat, lng }, …]` in `trails.js` instead of `parkingLat`/`parkingLng` — never both. One entry currently does: `northshore` has 3. List view renders one numbered button per lot (`🅿️1 🅿️2 🅿️3`, name on the `title`/`aria-label`); the map popup spells the names out. **Array order is the button numbering, so never reorder it to move the marker** — set `primary: true` on the one lot the marker belongs at instead. Northshore needs this: its lots are listed in the order a rider would consider them, but lot 1 is 3.4 km from the trail and only lot 2 is on it (0.06 km), so the marker is pinned to lot 2 while the buttons keep the given order. **The number is deliberate** — lot names vary in length and the last grid track is a fixed 280px shared with the Trailforks link, so a name-labelled button would overflow it. A single-lot trailhead still renders the original `🅿️ Directions` button, unchanged.
 - **Staging marker** — `script.js` appends "STAGING" to the `h1` and page title when the hostname contains `staging`, so the two environments are distinguishable at a glance.
 - **Favorites** — starred trails persist in `localStorage` under `ntxmtb-favorites` and render in a "Favorites" section above the city groups.
 - **Collapsible sections** — clicking a section heading collapses it; state lives in `collapsedSections` (favorites uses the sentinel key `__favorites__`).
@@ -152,6 +188,8 @@ things about it that are easy to break:
 `scripts/extract-parking.js` and `scripts/extract-trail-stats.js` are manual `workflow_dispatch` jobs, not part of the cron. **They only work from a GitHub Actions runner** — Trailforks serves a Cloudflare captcha 403 to everything else, including local `curl` with the scraper's exact headers. Results come back through the run log and an uploaded artifact.
 
 Because GitHub only registers `workflow_dispatch` from the **default branch**, such tooling has to land on `main` before it can be dispatched at all; a feature branch is not enough.
+
+**Before splicing `extract-parking.js` results into `trails.js`, drop every entry that already has `parkingSource: "manual"`.** The script re-scrapes all 58 and has no idea which ones were hand-corrected, so a wholesale splice reverts them. See "do not overwrite these" above.
 
 `extract-trail-stats.js` modes:
 

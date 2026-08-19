@@ -7,9 +7,24 @@
 //   type       "region" | "trail" — selects the Trailforks parse strategy
 //   batch      1 | 2 — which staggered cron job scrapes it
 //   lat, lng   fallback trailhead coordinates for the map view (public/script.js)
-//   parkingLat, parkingLng  Google Maps parking coords from the Trailforks page
-//              (scripts/extract-parking.js); when present they position the map
-//              marker and power the popup's "Directions to parking" link
+//   parkingLat, parkingLng  Google Maps parking coords, normally scraped from the
+//              Trailforks page (scripts/extract-parking.js); when present they
+//              position the map marker and power the popup's "Directions to
+//              parking" link
+//   parking    ONLY when a trailhead has MORE THAN ONE lot: an array of
+//              { name, lat, lng }, in the order they should be offered — that
+//              order is what the numbered buttons show, so do NOT reorder it to
+//              move the map marker. Replaces parkingLat/parkingLng for that
+//              entry — never set both. Add primary: true to the ONE lot the map
+//              marker should sit on (the closest to the trail, which is not
+//              always the first); without it the first lot is used.
+//              Hand-maintained (extract-parking.js cannot produce it), so it
+//              implies parkingSource: "manual".
+//   parkingSource  ONLY "manual", and ONLY on entries whose parking coords were
+//              corrected by hand because Trailforks' data was wrong or stale.
+//              Marks the coords as NOT reproducible from a scrape: a parking
+//              re-sweep will still emit the bad upstream value for these, so
+//              DO NOT splice that value back in. Hand-maintained; see CLAUDE.md.
 //   scrapeUrl  ONLY when the page scraped for status differs from the display url
 //   statsUrl   ONLY when the trail-listing page for stats isn't url + "/trails/"
 //              (e.g. a single-trail entry that still has a region listing)
@@ -31,7 +46,7 @@ export const TRAILS = [
   { key: "chisenhall", type: "region", batch: 1, lat: 32.51899, lng: -97.3377, parkingLat: 32.522795, parkingLng: -97.329564, city: "Fort Worth", name: "Chisenhall", statusArea: "Chisenhall", statusType: "Riding area", rid: "38370", lta: "FWMBA", url: "https://www.trailforks.com/region/chisenhall-38370/" },
   { key: "fossil-creek-park", type: "region", batch: 1, lat: 32.91896, lng: -97.36701, parkingLat: 32.815625, parkingLng: -97.25415, city: "Fort Worth", name: "Fossil Creek Park", statusArea: "Fossil Creek Park", statusType: "Riding area", rid: "46439", url: "https://www.trailforks.com/region/fossil-creek-park-46439/" },
   { key: "gateway-park", difficulty: "Intermediate", type: "region", batch: 1, lat: 32.75855, lng: -97.27187, parkingLat: 32.760419, parkingLng: -97.278008, city: "Fort Worth", name: "Gateway Park", statusArea: "Gateway Park", statusType: "Riding area", rid: "3721", url: "https://www.trailforks.com/region/gateway-park/" },
-  { key: "marion-sansom", difficulty: "Expert", type: "region", batch: 1, lat: 32.79441, lng: -97.41229, parkingLat: 32.797211, parkingLng: -97.411427, city: "Fort Worth", name: "Marion Sansom", statusArea: "Marion Sansom Park", statusType: "Riding area", rid: "14433", url: "https://www.trailforks.com/region/marion-sansom-park-14433/" },
+  { key: "marion-sansom", difficulty: "Expert", type: "region", batch: 1, lat: 32.79441, lng: -97.41229, parkingLat: 32.797211, parkingLng: -97.411427, parkingSource: "manual", city: "Fort Worth", name: "Marion Sansom", statusArea: "Marion Sansom Park", statusType: "Riding area", rid: "14433", url: "https://www.trailforks.com/region/marion-sansom-park-14433/" },
   { key: "north-z-boaz-park", type: "region", batch: 1, lat: 32.75318, lng: -97.33275, parkingLat: 32.733588, parkingLng: -97.436254, city: "Fort Worth", name: "North Z Boaz Park", statusArea: "North Z Boaz Park", statusType: "Riding area", rid: "60252", url: "https://www.trailforks.com/region/north-z-boaz-park-60252/" },
   { key: "the-woods-at-dunlop-park", type: "region", batch: 1, lat: 32.73558, lng: -97.10712, parkingLat: 32.779011, parkingLng: -97.129312, city: "Fort Worth", name: "The Woods at Dunlop Park", statusArea: "The Woods at Dunlop Park", statusType: "Riding area", rid: "72039", url: "https://www.trailforks.com/region/the-woods-at-dunlop-park-72039/" },
   { key: "lindsey-park", type: "region", batch: 2, lat: 32.31461, lng: -95.37433, parkingLat: 32.30927, parkingLng: -95.378307, city: "Tyler", name: "Lindsey Park", statusArea: "Lindsey Park", statusType: "Riding area", rid: "13827", url: "https://www.trailforks.com/region/lindsey-park-13827/" },
@@ -62,7 +77,11 @@ export const TRAILS = [
   { key: "knob-hills", type: "region", batch: 2, lat: 33.02839, lng: -97.08672, parkingLat: 33.044608, parkingLng: -97.207002, city: "North Dallas Region", name: "Knob Hills", statusArea: "Knob Hills", statusType: "Riding area", url: "https://www.trailforks.com/region/knob-hills-22005/" },
   { key: "lb-houston-park", type: "region", batch: 2, lat: 32.86051, lng: -96.91528, parkingLat: 32.866575, parkingLng: -96.922583, city: "North Dallas Region", name: "L.B. Houston Park", statusArea: "L.B. Houston Park", statusType: "Riding area", url: "https://www.trailforks.com/region/l-b-houston-park-22065/" },
   { key: "mineola-nature-preserve", type: "region", batch: 2, lat: 32.61923, lng: -95.46387, parkingLat: 32.627821, parkingLng: -95.441904, city: "Tyler", name: "Mineola Nature Preserve", statusArea: "Mineola Nature Preserve", statusType: "Riding area", url: "https://www.trailforks.com/region/mineola-nature-preserve-greer-hill-mtb-trails/" },
-  { key: "northshore", difficulty: "Expert", type: "region", batch: 2, lat: 33.01033, lng: -97.07473, parkingLat: 33.00523, parkingLng: -97.097979, city: "North Dallas Region", name: "Northshore", statusArea: "Northshore", statusType: "Riding area", lta: "DORBA", url: "https://www.trailforks.com/region/northshore/" },
+  { key: "northshore", difficulty: "Expert", type: "region", batch: 2, lat: 33.01033, lng: -97.07473, parking: [
+      { name: "Lakeside Dog Park", lat: 32.988486, lng: -97.06617 },
+      { name: "Twin Cove Way", lat: 33.005067, lng: -97.096927, primary: true },
+      { name: "Wichita Trail", lat: 33.021172, lng: -97.107741 }
+    ], parkingSource: "manual", city: "North Dallas Region", name: "Northshore", statusArea: "Northshore", statusType: "Riding area", lta: "DORBA", url: "https://www.trailforks.com/region/northshore/" },
   { key: "preserve-at-maxwell-creek", type: "region", batch: 2, lat: 33.02689, lng: -96.60641, parkingLat: 33.024455, parkingLng: -96.606294, city: "North Dallas Region", name: "Preserve at Maxwell Creek", statusArea: "Preserve at Maxwell Creek", statusType: "Region", rid: "56823", lta: "City of Murphy", url: "https://www.trailforks.com/region/preserve-at-maxwell-creek-56823/" },
   { key: "oak-cliff-nature-preserve", type: "region", batch: 2, lat: 32.70856, lng: -96.86151, parkingLat: 32.714271, parkingLng: -96.865333, city: "South Dallas Region", name: "Oak Cliff Nature Preserve", statusArea: "Oak Cliff Nature Preserve", statusType: "Riding area", url: "https://www.trailforks.com/region/oak-cliff-nature-preserve/", updatedNote: "This trail stays open in all weather conditions." },
   { key: "paul-dryer-preserve", type: "region", batch: 2, lat: 32.58978, lng: -96.85702, parkingLat: 32.617021, parkingLng: -96.908059, city: "South Dallas Region", name: "Paul S. Dryer Preserve at Windmill Hill", statusArea: "Paul S. Dryer Preserve at Windmill Hill", statusType: "Riding area", url: "https://www.trailforks.com/region/paul-s-dryer-preserve-at-windmill-hill/" },

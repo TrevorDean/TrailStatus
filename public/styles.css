@@ -443,6 +443,15 @@ main {
   white-space: nowrap;
 }
 
+/* Multi-lot trailheads render one numbered button per lot. They must stay
+   narrow: the last grid track is a fixed 280px and also holds the Trailforks
+   link, so these are padded tighter than the single "Directions" button.
+   Only the number is shown — the lot name is on the title/aria-label. This
+   does NOT make the track content-sized; the track stays 280px either way. */
+.parking-multi {
+  padding: 7px 8px;
+}
+
 .parking-none {
   border-color: transparent;
   color: var(--muted);
@@ -1016,6 +1025,15 @@ main {
   font-weight: 700;
   text-decoration: none;
 }
+/* Several lots stack instead of running together: the base rule is inline-flex
+   and the links are emitted with no separator between them, so left as-is they
+   would butt edge to edge. Lot names are also long enough to wrap awkwardly. */
+.leaflet-popup-content .map-popup-parking-multi {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}
+
 .leaflet-popup-content .map-popup-parking:hover { background: #d7e3da; }
 .leaflet-popup-content { margin: 12px 14px; }
 
