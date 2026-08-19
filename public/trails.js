@@ -79,8 +79,8 @@ export const TRAILS = [
   { key: "mineola-nature-preserve", type: "region", batch: 2, lat: 32.61923, lng: -95.46387, parkingLat: 32.627821, parkingLng: -95.441904, city: "Tyler", name: "Mineola Nature Preserve", statusArea: "Mineola Nature Preserve", statusType: "Riding area", url: "https://www.trailforks.com/region/mineola-nature-preserve-greer-hill-mtb-trails/" },
   { key: "northshore", difficulty: "Expert", type: "region", batch: 2, lat: 33.01033, lng: -97.07473, parking: [
       { name: "Lakeside Dog Park", lat: 32.988486, lng: -97.06617 },
-      { name: "Twin Cove Way", lat: 33.005067, lng: -97.096927, primary: true },
-      { name: "Wichita Trail", lat: 33.021172, lng: -97.107741 }
+      { name: "MADD Shelter", lat: 33.005067, lng: -97.096927, primary: true },
+      { name: "Twin Coves Park", lat: 33.006078, lng: -97.104076 }
     ], parkingSource: "manual", city: "North Dallas Region", name: "Northshore", statusArea: "Northshore", statusType: "Riding area", lta: "DORBA", url: "https://www.trailforks.com/region/northshore/" },
   { key: "preserve-at-maxwell-creek", type: "region", batch: 2, lat: 33.02689, lng: -96.60641, parkingLat: 33.024455, parkingLng: -96.606294, city: "North Dallas Region", name: "Preserve at Maxwell Creek", statusArea: "Preserve at Maxwell Creek", statusType: "Region", rid: "56823", lta: "City of Murphy", url: "https://www.trailforks.com/region/preserve-at-maxwell-creek-56823/" },
   { key: "oak-cliff-nature-preserve", type: "region", batch: 2, lat: 32.70856, lng: -96.86151, parkingLat: 32.714271, parkingLng: -96.865333, city: "South Dallas Region", name: "Oak Cliff Nature Preserve", statusArea: "Oak Cliff Nature Preserve", statusType: "Riding area", url: "https://www.trailforks.com/region/oak-cliff-nature-preserve/", updatedNote: "This trail stays open in all weather conditions." },
