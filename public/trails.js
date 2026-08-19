@@ -23,6 +23,10 @@
 //              link ONLY; the marker still uses lat/lng.
 //              Hand-maintained (extract-parking.js cannot produce it), so it
 //              implies parkingSource: "manual".
+//   parkingPlusCode  the single-lot equivalent of a lot's plusCode, for entries
+//              using parkingLat/parkingLng rather than a parking array.
+//              Hand-maintained — a parking re-sweep will not reproduce it, so
+//              do not drop it when splicing scraped results back in.
 //   parkingSource  ONLY "manual", and ONLY on entries whose parking coords were
 //              corrected by hand because Trailforks' data was wrong or stale.
 //              Marks the coords as NOT reproducible from a scrape: a parking
@@ -61,7 +65,7 @@ export const TRAILS = [
   { key: "binkley-park", type: "region", batch: 1, lat: 33.62879, lng: -96.62911, parkingLat: 33.629054, parkingLng: -96.628712, city: "Far North Region", name: "Binkley Park", statusArea: "Binkley Park", statusType: "Riding area", url: "https://www.trailforks.com/region/binkley-park-24408/" },
   { key: "bonham-state-park", type: "region", batch: 1, lat: 33.54474, lng: -96.14359, parkingLat: 33.54832, parkingLng: -96.144784, city: "Far North Region", name: "Bonham State Park", statusArea: "Bonham State Park", statusType: "Riding area", url: "https://www.trailforks.com/region/bonham-state-park/" },
   { key: "boulder-park", type: "region", batch: 1, lat: 32.66755, lng: -96.86991, parkingLat: 32.668642, parkingLng: -96.874134, city: "South Dallas Region", name: "Boulder Park", statusArea: "Boulder Park", statusType: "Riding area", url: "https://www.trailforks.com/region/boulder-park-13783/" },
-  { key: "cedar-hill-state-park", type: "region", batch: 1, lat: 32.60964, lng: -96.99212, parkingLat: 32.611716, parkingLng: -96.988626, city: "South Dallas Region", name: "Cedar Hill State Park", statusArea: "Cedar Hill State Park", statusType: "Riding area", url: "https://www.trailforks.com/region/cedar-hill-state-park-19031/" },
+  { key: "cedar-hill-state-park", type: "region", batch: 1, lat: 32.60964, lng: -96.99212, parkingLat: 32.610062, parkingLng: -96.997438, parkingPlusCode: "8645J263+22", parkingSource: "manual", city: "South Dallas Region", name: "Cedar Hill State Park", statusArea: "Cedar Hill State Park", statusType: "Riding area", url: "https://www.trailforks.com/region/cedar-hill-state-park-19031/" },
   { key: "corinth-community-park", type: "region", batch: 1, lat: 33.15137, lng: -97.04828, parkingLat: 33.152905, parkingLng: -97.044332, city: "North Dallas Region", name: "Corinth Community Park", statusArea: "Corinth Community Park", statusType: "Riding area", url: "https://www.trailforks.com/region/corinth-community-park-25637/" },
   { key: "creekside-park-dorba", difficulty: "Intermediate", type: "region", batch: 1, lat: 32.80013, lng: -96.72003, parkingLat: 32.798231, parkingLng: -96.722799, city: "East Dallas Region", name: "Creekside Park DORBA Trail", statusArea: "Creekside Park DORBA Trail", statusType: "Riding area", url: "https://www.trailforks.com/region/creekside-park-dorba-trail/" },
   { key: "creekside-park-skillpark", type: "region", batch: 1, lat: 32.80003, lng: -96.72222, parkingLat: 32.798231, parkingLng: -96.722799, city: "East Dallas Region", name: "Creekside Park Skillpark", statusArea: "Creekside Park Skillpark", statusType: "Riding area", url: "https://www.trailforks.com/region/creekside-park-skillpark/" },

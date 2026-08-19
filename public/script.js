@@ -469,7 +469,9 @@ function parkingLots(trail) {
     return trail.parking.filter(p => typeof p.lat === "number" && typeof p.lng === "number");
   }
   if (typeof trail.parkingLat === "number" && typeof trail.parkingLng === "number") {
-    return [{ name: "", lat: trail.parkingLat, lng: trail.parkingLng }];
+    // trail-level parkingPlusCode is the single-lot equivalent of a lot's
+    // plusCode; fold it in so the shapes stay interchangeable downstream.
+    return [{ name: "", lat: trail.parkingLat, lng: trail.parkingLng, plusCode: trail.parkingPlusCode }];
   }
   return [];
 }
