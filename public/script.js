@@ -488,9 +488,18 @@ function markerLatLng(trail) {
   return pin ? [pin.lat, pin.lng] : [trail.lat, trail.lng];
 }
 
-// Google Maps driving directions to one parking lot.
+// Google Maps driving directions to one parking lot. A raw coordinate is the
+// default, but Google sometimes snaps one to the nearest road rather than the
+// lot itself — Northshore's MADD Shelter routed to the wrong spot that way. A
+// lot may therefore carry a `plusCode` (Open Location Code), which names a place
+// Google resolves exactly; when present it is the destination instead.
+//
+// The code MUST be percent-encoded: its "+" would otherwise be read as a space
+// in the query string and the destination would not resolve at all. Coordinates
+// keep their unencoded form, so the other 57 links are unchanged.
 function parkingDirectionsUrl(lot) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${lot.lat},${lot.lng}`;
+  const destination = lot.plusCode ? encodeURIComponent(lot.plusCode) : `${lot.lat},${lot.lng}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
 }
 
 function mapPopupHtml(trail) {

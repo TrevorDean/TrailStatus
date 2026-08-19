@@ -17,7 +17,10 @@
 //              move the map marker. Replaces parkingLat/parkingLng for that
 //              entry — never set both. Add primary: true to the ONE lot the map
 //              marker should sit on (the closest to the trail, which is not
-//              always the first); without it the first lot is used.
+//              always the first); without it the first lot is used. Add
+//              plusCode (a full Open Location Code) to a lot whose coordinates
+//              Google Maps misroutes — it replaces the coords in the directions
+//              link ONLY; the marker still uses lat/lng.
 //              Hand-maintained (extract-parking.js cannot produce it), so it
 //              implies parkingSource: "manual".
 //   parkingSource  ONLY "manual", and ONLY on entries whose parking coords were
@@ -79,7 +82,7 @@ export const TRAILS = [
   { key: "mineola-nature-preserve", type: "region", batch: 2, lat: 32.61923, lng: -95.46387, parkingLat: 32.627821, parkingLng: -95.441904, city: "Tyler", name: "Mineola Nature Preserve", statusArea: "Mineola Nature Preserve", statusType: "Riding area", url: "https://www.trailforks.com/region/mineola-nature-preserve-greer-hill-mtb-trails/" },
   { key: "northshore", difficulty: "Expert", type: "region", batch: 2, lat: 33.01033, lng: -97.07473, parking: [
       { name: "Lakeside Dog Park", lat: 32.988486, lng: -97.06617 },
-      { name: "MADD Shelter", lat: 33.005067, lng: -97.096927, primary: true },
+      { name: "MADD Shelter", lat: 33.005067, lng: -97.096927, plusCode: "86542W42+3R", primary: true },
       { name: "Twin Coves Park", lat: 33.006078, lng: -97.104076 }
     ], parkingSource: "manual", city: "North Dallas Region", name: "Northshore", statusArea: "Northshore", statusType: "Riding area", lta: "DORBA", url: "https://www.trailforks.com/region/northshore/" },
   { key: "preserve-at-maxwell-creek", type: "region", batch: 2, lat: 33.02689, lng: -96.60641, parkingLat: 33.024455, parkingLng: -96.606294, city: "North Dallas Region", name: "Preserve at Maxwell Creek", statusArea: "Preserve at Maxwell Creek", statusType: "Region", rid: "56823", lta: "City of Murphy", url: "https://www.trailforks.com/region/preserve-at-maxwell-creek-56823/" },
