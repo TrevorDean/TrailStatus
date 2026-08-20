@@ -59,13 +59,18 @@ Scraping originally ran as a scheduled Cloudflare Worker (`cron-worker/`), but w
 
 **Adding or changing a trail is one entry in `public/trails.js`.** Add the org to `LTA_LINKS` in `public/script.js` too if it is a new one. The `batch: 1 | 2` field decides which staggered cron job scrapes it; `type: "region" | "trail"` selects the parse strategy. `key` is the join key against KV.
 
-Three optional fields are **hand-maintained and never regenerated** by a sweep, so they are easy to overlook:
+Five optional fields are **hand-maintained and never regenerated** by a sweep, so they are easy to overlook:
 
-| field | when to use it |
-| --- | --- |
-| `difficulty` | Override the computed band when Trailforks' ratings are wrong. `"Beginner" \| "Intermediate" \| "Expert"`. 12 entries currently use this. |
-| `statsUrl` | When the trail-listing page isn't `url + "/trails/"` — e.g. a single-trail entry that still has a region listing. Used by `trinity-track` (Willow Park) and `western-heritage-park`. |
-| `parkingSource` | `"manual"` on any entry whose `parkingLat`/`parkingLng` were corrected by hand. 1 entry currently uses this (`marion-sansom`). |
+| field | when to use it | count |
+| --- | --- | --- |
+| `difficulty` | Override the computed band when Trailforks' ratings are wrong. `"Beginner" \| "Intermediate" \| "Expert"`. | 12 |
+| `statsUrl` | When the trail-listing page isn't `url + "/trails/"` — e.g. a single-trail entry that still has a region listing. `trinity-track` (Willow Park) and `western-heritage-park`. | 2 |
+| `parkingSource` | `"manual"` — the parking coords are **not reproducible from a scrape**, either because Trailforks' pin is wrong or because it serves no pin at all. A sweep must never overwrite these. | 10 |
+| `parking` | An array of lots, for a trailhead with more than one. Replaces `parkingLat`/`parkingLng`; implies `parkingSource: "manual"`. `northshore`. | 1 |
+| `parkingPlusCode` | An Open Location Code used as the directions destination when Google misroutes the raw coordinate. `cedar-hill-state-park`; `northshore`'s MADD Shelter carries the per-lot `plusCode` equivalent. | 2 |
+
+Counts are current as of the last edit — `npm run check:parking` reports the
+`parkingSource` figure, and the others are a one-line filter over `TRAILS`.
 
 ### `parkingSource: "manual"` — do not overwrite these
 
@@ -132,7 +137,7 @@ This replaced an earlier arrangement where the list was copy-pasted across four 
 All in `public/script.js` + `public/index.html`, no framework:
 
 - **List / Map toggle** (`[data-view]`). Map view is Leaflet over OpenStreetMap, vendored in `public/vendor/leaflet/` — not a CDN. Markers are `L.divIcon`s coloured by status, built in `renderMap()`; `ensureMap()` lazily initialises the map on first switch to the map view.
-- **Parking** — markers are placed at the trailhead's parking lot when known. `parkingLots(trail)` is the one accessor: it normalises both data shapes into an array of `{ name, lat, lng }`, so nothing downstream has to branch. `markerLatLng()` pins the lot flagged `primary` (else the first) and falls back to `lat`/`lng`; `parkingDirectionsUrl(lot)` takes a lot (not a trail) and builds the Google Maps link — from `lot.plusCode` when it has one, else the coordinates. Google sometimes snaps a raw coordinate to the nearest road instead of the lot (Northshore's MADD Shelter misrouted that way), so a lot may carry a full Open Location Code that Google resolves exactly. **It must stay percent-encoded**: an unencoded `+` reads as a space in the query string and the destination silently fails to resolve. On a single-lot trailhead the field is `parkingPlusCode` at the trail level; `parkingLots()` folds it into the lot so both shapes behave alike. A plus code changes the directions link only — the marker always uses `lat`/`lng`, so move the coordinates too if the pin itself is wrong. All 58 trailheads currently have parking coordinates — 56 scraped by `scripts/extract-parking.js`, 10 hand-maintained and flagged `parkingSource: "manual"` — see the splice guard below for why each one is flagged.
+- **Parking** — markers are placed at the trailhead's parking lot when known. `parkingLots(trail)` is the one accessor: it normalises both data shapes into an array of `{ name, lat, lng }`, so nothing downstream has to branch. `markerLatLng()` pins the lot flagged `primary` (else the first) and falls back to `lat`/`lng`; `parkingDirectionsUrl(lot)` takes a lot (not a trail) and builds the Google Maps link — from `lot.plusCode` when it has one, else the coordinates. Google sometimes snaps a raw coordinate to the nearest road instead of the lot (Northshore's MADD Shelter misrouted that way), so a lot may carry a full Open Location Code that Google resolves exactly. **It must stay percent-encoded**: an unencoded `+` reads as a space in the query string and the destination silently fails to resolve. On a single-lot trailhead the field is `parkingPlusCode` at the trail level; `parkingLots()` folds it into the lot so both shapes behave alike. A plus code changes the directions link only — the marker always uses `lat`/`lng`, so move the coordinates too if the pin itself is wrong. All 58 trailheads currently have parking coordinates — 48 whose values a sweep can reproduce, and 10 flagged `parkingSource: "manual"` that it cannot; see the splice guard below for why each is flagged.
 - **Trailheads with more than one lot** use `parking: [{ name, lat, lng }, …]` in `trails.js` instead of `parkingLat`/`parkingLng` — never both. One entry currently does: `northshore` has 3. List view renders one numbered button per lot (`🅿️1 🅿️2 🅿️3`, name on the `title`/`aria-label`); the map popup spells the names out. **Array order is the button numbering, so never reorder it to move the marker** — set `primary: true` on the one lot the marker belongs at instead. Northshore needs this: its lots are listed in the order a rider would consider them, but lot 1 is 3.4 km from the trail and only lot 2 is on it (0.06 km), so the marker is pinned to lot 2 while the buttons keep the given order. **The number is deliberate** — lot names vary in length and the last grid track is a fixed 280px shared with the Trailforks link, so a name-labelled button would overflow it. A single-lot trailhead still renders the original `🅿️ Directions` button, unchanged.
 - **Staging marker** — `script.js` appends "STAGING" to the `h1` and page title when the hostname contains `staging`, so the two environments are distinguishable at a glance.
 - **Favorites** — starred trails persist in `localStorage` under `ntxmtb-favorites` and render in a "Favorites" section above the city groups.
