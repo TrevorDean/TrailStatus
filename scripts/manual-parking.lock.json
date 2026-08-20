@@ -1,0 +1,43 @@
+[
+  {
+    "key": "marion-sansom",
+    "parkingSource": "manual",
+    "parkingLat": 32.797211,
+    "parkingLng": -97.411427,
+    "parkingPlusCode": null
+  },
+  {
+    "key": "cedar-hill-state-park",
+    "parkingSource": "manual",
+    "parkingLat": 32.610062,
+    "parkingLng": -96.997438,
+    "parkingPlusCode": "8645J263+22"
+  },
+  {
+    "key": "northshore",
+    "parkingSource": "manual",
+    "parking": [
+      {
+        "name": "Lakeside Dog Park",
+        "lat": 32.988486,
+        "lng": -97.06617,
+        "plusCode": null,
+        "primary": false
+      },
+      {
+        "name": "MADD Shelter",
+        "lat": 33.005067,
+        "lng": -97.096927,
+        "plusCode": "86542W42+3R",
+        "primary": true
+      },
+      {
+        "name": "Twin Coves Park",
+        "lat": 33.006078,
+        "lng": -97.104076,
+        "plusCode": null,
+        "primary": false
+      }
+    ]
+  }
+]

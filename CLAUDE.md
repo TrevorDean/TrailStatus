@@ -16,6 +16,8 @@ npm run deploy     # wrangler deploy — deploy the live site (Worker "ntx")
 npx wrangler deploy --env staging   # deploy to ntx-staging.trailstatus.workers.dev
 node scripts/update-trail-status.js # manually run the status scraper (needs CLOUDFLARE_API_TOKEN env var)
 node scripts/extract-trail-stats.js --local   # re-parse saved HTML in dump/ offline (no network)
+npm run check:parking                        # verify hand-corrected parking hasn't been reverted (exit 1 on drift)
+node scripts/check-manual-parking.js --update # deliberately accept new hand-corrected values
 ```
 
 `staging` and `prod` are Cloudflare **deploy targets**, not git branches — they
@@ -74,10 +76,28 @@ by hand from the run log. A trailhead corrected by hand will be handed back to
 you as the original wrong value on the next sweep, and splicing the whole batch
 in will silently revert the fix.
 
-`parkingSource: "manual"` is the marker that prevents that. **When splicing
-parking results, skip every entry that carries it** — the scraped value for those
-is known-bad, not a candidate. A `parking` array always implies it, since
-`extract-parking.js` can only ever emit a single lot per trailhead.
+`parkingSource: "manual"` is the marker that prevents that, and it is now
+enforced from both ends rather than relying on anyone remembering:
+
+1. **`extract-parking.js` never emits these trailheads.** It partitions on the
+   flag before fetching, so a flagged trailhead is not even requested. It appears
+   in a `skipped` list carrying a reason and *no coordinates*, so there is
+   nothing to paste in by accident. Output is now
+   `{ scraped, skipped, results }` — splice `results` only.
+2. **`npm run check:parking` fails if a flagged entry drifts.** Values are
+   pinned in `scripts/manual-parking.lock.json`. Run it after any splice. It
+   catches both the coordinates changing and the `parkingSource` flag going
+   missing — the latter being what a wholesale paste actually does.
+
+Changing a hand-corrected value on purpose means
+`node scripts/check-manual-parking.js --update`, which rewrites the lock as its
+own reviewable diff instead of letting the change ride along inside a sweep.
+
+The check verifies **stability, not correctness** — it knows a value changed, not
+whether it is right. Correctness still comes from the real world.
+
+A `parking` array or a `parkingPlusCode` always implies the flag, since
+`extract-parking.js` can only ever emit a single bare coordinate per trailhead.
 
 The case that motivated the field: Trailforks' pin for **Marion Sansom** was
 8.12 km from the park, stale rather than merely imprecise. Since `markerLatLng()`
@@ -189,7 +209,7 @@ things about it that are easy to break:
 
 Because GitHub only registers `workflow_dispatch` from the **default branch**, such tooling has to land on `main` before it can be dispatched at all; a feature branch is not enough.
 
-**Before splicing `extract-parking.js` results into `trails.js`, drop every entry that already has `parkingSource: "manual"`.** The script re-scrapes all 58 and has no idea which ones were hand-corrected, so a wholesale splice reverts them. See "do not overwrite these" above.
+**`extract-parking.js` scrapes only the trailheads without `parkingSource: "manual"`** (55 of 58 today) and reports the rest under `skipped`. Splice the `results` array only, then run `npm run check:parking` to confirm nothing hand-corrected moved. See "do not overwrite these" above.
 
 `extract-trail-stats.js` modes:
 

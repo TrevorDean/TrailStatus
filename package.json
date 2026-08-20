@@ -2,7 +2,8 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --port 8788",
-    "deploy": "wrangler deploy --env=\"\""
+    "deploy": "wrangler deploy --env=\"\"",
+    "check:parking": "node scripts/check-manual-parking.js"
   },
   "devDependencies": {
     "wrangler": "^4.111.0"
