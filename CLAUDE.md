@@ -82,9 +82,15 @@ enforced from both ends rather than relying on anyone remembering:
 1. **`extract-parking.js` never emits these trailheads.** It partitions on the
    flag before fetching, so a flagged trailhead is not even requested. It appears
    in a `skipped` list carrying a reason and *no coordinates*, so there is
-   nothing to paste in by accident. Output is now
-   `{ scraped, skipped, results }` — splice `results` only.
-2. **`npm run check:parking` fails if a flagged entry drifts.** Values are
+   nothing to paste in by accident.
+2. **It also holds back any trailhead whose scrape would blank good data.** A
+   page that yields no pin for an entry that already has coordinates lands in
+   `blanked`, not `results` — the quiet version of the same hazard, where the
+   splice writes an empty list over a correct value rather than a wrong one.
+   This catches a pin disappearing upstream *before* anyone thinks to flag it.
+   Output is `{ scraped, spliceable, skipped, blanked, results }`; **`results`
+   is the only splice-able array, and is safe to paste wholesale.**
+3. **`npm run check:parking` fails if a flagged entry drifts.** Values are
    pinned in `scripts/manual-parking.lock.json`. Run it after any splice. It
    catches both the coordinates changing and the `parkingSource` flag going
    missing — the latter being what a wholesale paste actually does.
@@ -126,7 +132,7 @@ This replaced an earlier arrangement where the list was copy-pasted across four 
 All in `public/script.js` + `public/index.html`, no framework:
 
 - **List / Map toggle** (`[data-view]`). Map view is Leaflet over OpenStreetMap, vendored in `public/vendor/leaflet/` — not a CDN. Markers are `L.divIcon`s coloured by status, built in `renderMap()`; `ensureMap()` lazily initialises the map on first switch to the map view.
-- **Parking** — markers are placed at the trailhead's parking lot when known. `parkingLots(trail)` is the one accessor: it normalises both data shapes into an array of `{ name, lat, lng }`, so nothing downstream has to branch. `markerLatLng()` pins the lot flagged `primary` (else the first) and falls back to `lat`/`lng`; `parkingDirectionsUrl(lot)` takes a lot (not a trail) and builds the Google Maps link — from `lot.plusCode` when it has one, else the coordinates. Google sometimes snaps a raw coordinate to the nearest road instead of the lot (Northshore's MADD Shelter misrouted that way), so a lot may carry a full Open Location Code that Google resolves exactly. **It must stay percent-encoded**: an unencoded `+` reads as a space in the query string and the destination silently fails to resolve. On a single-lot trailhead the field is `parkingPlusCode` at the trail level; `parkingLots()` folds it into the lot so both shapes behave alike. A plus code changes the directions link only — the marker always uses `lat`/`lng`, so move the coordinates too if the pin itself is wrong. All 58 trailheads currently have parking coordinates — 56 scraped by `scripts/extract-parking.js`, 3 hand-maintained and flagged `parkingSource: "manual"` (`marion-sansom`, `northshore`, `cedar-hill-state-park`).
+- **Parking** — markers are placed at the trailhead's parking lot when known. `parkingLots(trail)` is the one accessor: it normalises both data shapes into an array of `{ name, lat, lng }`, so nothing downstream has to branch. `markerLatLng()` pins the lot flagged `primary` (else the first) and falls back to `lat`/`lng`; `parkingDirectionsUrl(lot)` takes a lot (not a trail) and builds the Google Maps link — from `lot.plusCode` when it has one, else the coordinates. Google sometimes snaps a raw coordinate to the nearest road instead of the lot (Northshore's MADD Shelter misrouted that way), so a lot may carry a full Open Location Code that Google resolves exactly. **It must stay percent-encoded**: an unencoded `+` reads as a space in the query string and the destination silently fails to resolve. On a single-lot trailhead the field is `parkingPlusCode` at the trail level; `parkingLots()` folds it into the lot so both shapes behave alike. A plus code changes the directions link only — the marker always uses `lat`/`lng`, so move the coordinates too if the pin itself is wrong. All 58 trailheads currently have parking coordinates — 56 scraped by `scripts/extract-parking.js`, 10 hand-maintained and flagged `parkingSource: "manual"` — see the splice guard below for why each one is flagged.
 - **Trailheads with more than one lot** use `parking: [{ name, lat, lng }, …]` in `trails.js` instead of `parkingLat`/`parkingLng` — never both. One entry currently does: `northshore` has 3. List view renders one numbered button per lot (`🅿️1 🅿️2 🅿️3`, name on the `title`/`aria-label`); the map popup spells the names out. **Array order is the button numbering, so never reorder it to move the marker** — set `primary: true` on the one lot the marker belongs at instead. Northshore needs this: its lots are listed in the order a rider would consider them, but lot 1 is 3.4 km from the trail and only lot 2 is on it (0.06 km), so the marker is pinned to lot 2 while the buttons keep the given order. **The number is deliberate** — lot names vary in length and the last grid track is a fixed 280px shared with the Trailforks link, so a name-labelled button would overflow it. A single-lot trailhead still renders the original `🅿️ Directions` button, unchanged.
 - **Staging marker** — `script.js` appends "STAGING" to the `h1` and page title when the hostname contains `staging`, so the two environments are distinguishable at a glance.
 - **Favorites** — starred trails persist in `localStorage` under `ntxmtb-favorites` and render in a "Favorites" section above the city groups.
@@ -209,7 +215,9 @@ things about it that are easy to break:
 
 Because GitHub only registers `workflow_dispatch` from the **default branch**, such tooling has to land on `main` before it can be dispatched at all; a feature branch is not enough.
 
-**`extract-parking.js` scrapes only the trailheads without `parkingSource: "manual"`** (55 of 58 today) and reports the rest under `skipped`. Splice the `results` array only, then run `npm run check:parking` to confirm nothing hand-corrected moved. See "do not overwrite these" above.
+**`extract-parking.js` scrapes only the trailheads without `parkingSource: "manual"`** (48 of 58 today) and reports the rest under `skipped`. Anything that came back pin-less despite having stored coordinates is held in `blanked`. Splice the `results` array only — it is safe to paste wholesale — then run `npm run check:parking`. See "do not overwrite these" above.
+
+**10 of 58 are flagged**, for two different reasons. Three were corrected by hand against a wrong Trailforks pin (`marion-sansom` 8.12 km out, `cedar-hill-state-park` 846 m out, plus `northshore`'s three lots). The other seven are entries Trailforks serves **no pin for at all** — verified in run `32409476860` — so a sweep would blank them: the three skill parks (`erwin-park-skill-park`, `creekside-park-skillpark`, `katie-jackson-park-skillpark`) inherit their parent region's lot and never had their own pin, and `trinity-track`, `western-heritage-park`, `the-pit` and `the-woods-at-dunlop-park` have lost theirs upstream.
 
 `extract-trail-stats.js` modes:
 

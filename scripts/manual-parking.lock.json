@@ -1,9 +1,37 @@
 [
   {
+    "key": "trinity-track",
+    "parkingSource": "manual",
+    "parkingLat": 32.7411364,
+    "parkingLng": -97.6535548,
+    "parkingPlusCode": null
+  },
+  {
+    "key": "western-heritage-park",
+    "parkingSource": "manual",
+    "parkingLat": 32.8331063,
+    "parkingLng": -98.1132817,
+    "parkingPlusCode": null
+  },
+  {
+    "key": "the-pit",
+    "parkingSource": "manual",
+    "parkingLat": 32.6960324,
+    "parkingLng": -97.6053653,
+    "parkingPlusCode": null
+  },
+  {
     "key": "marion-sansom",
     "parkingSource": "manual",
     "parkingLat": 32.797211,
     "parkingLng": -97.411427,
+    "parkingPlusCode": null
+  },
+  {
+    "key": "the-woods-at-dunlop-park",
+    "parkingSource": "manual",
+    "parkingLat": 32.779011,
+    "parkingLng": -97.129312,
     "parkingPlusCode": null
   },
   {
@@ -12,6 +40,27 @@
     "parkingLat": 32.610062,
     "parkingLng": -96.997438,
     "parkingPlusCode": "8645J263+22"
+  },
+  {
+    "key": "creekside-park-skillpark",
+    "parkingSource": "manual",
+    "parkingLat": 32.798231,
+    "parkingLng": -96.722799,
+    "parkingPlusCode": null
+  },
+  {
+    "key": "erwin-park-skill-park",
+    "parkingSource": "manual",
+    "parkingLat": 33.252407,
+    "parkingLng": -96.657087,
+    "parkingPlusCode": null
+  },
+  {
+    "key": "katie-jackson-park-skillpark",
+    "parkingSource": "manual",
+    "parkingLat": 33.006513,
+    "parkingLng": -96.819272,
+    "parkingPlusCode": null
   },
   {
     "key": "northshore",

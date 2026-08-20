@@ -91,6 +91,44 @@ for (const t of scrapeable) {
 // Shape is an object, not a bare array: `results` is the only splice-able part,
 // and keeping `skipped` beside it makes the omission visible in the run log
 // rather than looking like trailheads that simply failed to fetch.
+// A trailhead whose page yields no pin, but which already HAS coordinates, is
+// the quiet version of the same hazard: splicing its empty list blanks a good
+// value instead of replacing it with a bad one. The flag catches the ones we
+// know about; this catches a pin that disappears upstream later, before anyone
+// has thought to flag it. Such entries are held out of `results` so the
+// splice-able array is only ever safe to paste wholesale.
+const blanked = [];
+const safe = [];
+for (const r of results) {
+  const t = scrapeable.find(x => x.key === r.key);
+  const hasStored =
+    Array.isArray(t.parking) || typeof t.parkingLat === "number";
+  if (r.parking.length === 0 && hasStored) {
+    blanked.push({
+      key: r.key,
+      status: r.status,
+      reason: "no pin on the Trailforks page, but trails.js already has coordinates — splicing this would blank them"
+    });
+  } else {
+    safe.push(r);
+  }
+}
+
+if (blanked.length > 0) {
+  console.error(`\n${blanked.length} trailhead(s) returned NO pin but already have coordinates — held out of results:`);
+  for (const b of blanked) console.error(`  - ${b.key}`);
+  console.error("Flag these parkingSource: \"manual\" if the stored value is the one you want.\n");
+}
+
+// `results` is the only splice-able array, and is now safe to paste wholesale:
+// hand-maintained trailheads never entered it, and neither did any trailhead
+// whose scrape would blank existing coordinates.
 console.log("===PARKING_JSON_START===");
-console.log(JSON.stringify({ scraped: results.length, skipped, results }));
+console.log(JSON.stringify({
+  scraped: results.length,
+  spliceable: safe.length,
+  skipped,
+  blanked,
+  results: safe
+}));
 console.log("===PARKING_JSON_END===");
