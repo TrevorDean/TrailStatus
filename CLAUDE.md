@@ -18,6 +18,7 @@ node scripts/update-trail-status.js # manually run the status scraper (needs CLO
 node scripts/extract-trail-stats.js --local   # re-parse saved HTML in dump/ offline (no network)
 npm run check:parking                        # verify hand-corrected parking hasn't been reverted (exit 1 on drift)
 node scripts/check-manual-parking.js --update # deliberately accept new hand-corrected values
+npm run verify                               # run the verify/ frontend harnesses (see below)
 ```
 
 `staging` and `prod` are Cloudflare **deploy targets**, not git branches — they
@@ -243,8 +244,44 @@ Note `--local` only ever sees the **first page** of a paginated listing, since o
 
 ## Verifying frontend changes
 
-There is no test framework, but `dump/` (gitignored) holds jsdom harnesses that boot `public/script.js` with Leaflet and `fetch` stubbed: `verify-column.mjs` (grid/cell alignment), `verify-grid.mjs` (CSS-as-text: identical templates, no content-sized tracks), `verify-filter.mjs` (filter counts vs expected bands), `verify-links.mjs`, `verify-default-view.mjs`, `verify-stats-toggle.mjs` (mobile ⓘ, including that open panels survive the `render()` a star tap forces), and `verify-filter-persist.mjs` (boots the page twice against one shared `localStorage` to simulate a reload).
+There is no test framework, but `verify/` holds nine harnesses that boot the real
+`public/script.js` with Leaflet and `fetch` stubbed and assert on the DOM it
+produces. Run them all with **`npm run verify`**, or one at a time from the repo
+root (they resolve `public/…` relative to the cwd, and their generated temp
+module relative to `verify/` — so they must be run from the root):
 
-**What they cannot do:** the harnesses construct `JSDOM` without `resources: "usable"`, so `styles.css` is never loaded — no computed styles, no media-query evaluation, no layout, no `:hover`. Anything visual still needs a real browser, and headless Chromium can't be installed here without sudo.
+| harness | asserts |
+| --- | --- |
+| `verify-grid.mjs` | **No jsdom** — parses `styles.css` as text and compares `.trail-heading` against `.trail-row`: identical templates, gap and padding, and no content-sized track |
+| `verify-column.mjs` | heading cell count == row cell count, and column order |
+| `verify-filter.mjs` | filter counts against expected difficulty bands |
+| `verify-filter-persist.mjs` | boots the page twice against one shared `localStorage` to simulate a reload, including a corrupt entry |
+| `verify-stats-toggle.mjs` | the mobile ⓘ panel, including that open panels survive the `render()` a star tap forces |
+| `verify-default-view.mjs` | `DEFAULT_VIEW` matches `index.html`'s initial markup |
+| `verify-links.mjs` | link hrefs and labels |
+| `verify-override.mjs` | a `difficulty` override wins over the computed band, in column, tooltip and filter |
+| `verify-dom.mjs` | general DOM shape, incl. that a trailhead with no stats offers no tip |
+
+**What they cannot do:** `JSDOM` is constructed without `resources: "usable"`, so
+`styles.css` is never loaded — no computed styles, no media-query evaluation, no
+layout, no `:hover`. Anything visual still needs a real browser, and headless
+Chromium can't be installed here without sudo. `verify-grid.mjs` exists precisely
+because the grid footgun is invisible to the others.
+
+**They print; most do not fail.** Only `verify-filter-persist` and
+`verify-stats-toggle` exit non-zero. The rest print `FAIL` or `MISMATCH REMAINS`
+and still exit 0, so `npm run verify` cannot yet gate a commit — someone has to
+read the output. Worth fixing if these ever go into CI.
+
+That gap has already bitten once: `verify-override.mjs` broke when `8bde115` made
+the map the default view (no `.trail-row` exists until the list is selected) and
+nobody noticed, because it printed a crash into a log nobody was reading. It now
+clicks the list toggle first, as `verify-column.mjs` already did.
+
+They generate a rewritten copy of `script.js` at runtime (`verify/script-*.mjs`,
+`verify/trails-override.js`); both are gitignored.
+
+`dump/` is separate and still gitignored: it holds saved Trailforks HTML for
+`extract-trail-stats.js --local`.
 
 Climb has no `data-v` and is read from text; it is occasionally missing upstream (Big Cedar's Pitbull has an empty climb cell) and counts as 0.

@@ -3,9 +3,11 @@
   "scripts": {
     "dev": "wrangler dev --port 8788",
     "deploy": "wrangler deploy --env=\"\"",
-    "check:parking": "node scripts/check-manual-parking.js"
+    "check:parking": "node scripts/check-manual-parking.js",
+    "verify": "for f in verify/verify-*.mjs; do echo \"--- $f\"; node \"$f\" || exit 1; done"
   },
   "devDependencies": {
+    "jsdom": "^30.0.1",
     "wrangler": "^4.111.0"
   },
   "dependencies": {

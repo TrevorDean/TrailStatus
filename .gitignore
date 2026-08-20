@@ -6,3 +6,7 @@ private/
 research/
 cron-worker/node_modules/
 cron-worker/.wrangler/
+
+# Generated at runtime by the verify/ harnesses (a rewritten copy of script.js)
+verify/script-*.mjs
+verify/trails-override.js
