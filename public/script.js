@@ -398,6 +398,15 @@ function hourLabel(epochSeconds) {
   });
 }
 
+// Weather.com resolves a lat/lng straight to that location's city page — the
+// trailhead coordinates above land on "Hourly Weather Forecast for Weatherford,
+// Texas". Coordinates rather than the city name on purpose: `city` is scraped
+// from Trailforks and is occasionally a region rather than a town, whereas
+// lat/lng is exact and is already the same input the forecast itself uses.
+function weatherPageUrl(trail) {
+  return `https://weather.com/weather/hourbyhour/l/${trail.lat},${trail.lng}`;
+}
+
 // The ONE accessor for forecast data — nothing else reads `forecast` directly,
 // the way parkingLots() is the only reader of the two parking shapes.
 //
@@ -438,14 +447,21 @@ function rainBarsHtml(outlook) {
 // List-view Rain 8h column. Renders an inert placeholder when there is no
 // forecast, exactly as parkingCell() does, so the row keeps its cell count and
 // the two grids stay aligned.
+// The percentage itself is the link out to the full forecast. Deliberately not
+// an added icon: the track is a fixed 110px and eight bars already leave ~13px
+// each, so anything extra would force the column wider and shift every column
+// to its right. Nothing to link when there is no forecast, so the placeholder
+// stays inert — the map popup carries a Weather link that works either way.
 function rainCell(trail) {
   const outlook = rainOutlook(trail);
   if (!outlook) return `<span class="trail-rain rain-none">—</span>`;
-  return `<span class="trail-rain"><span class="rain-peak rain-text-${rainBand(outlook.peak)}">${outlook.peak}%</span>${rainBarsHtml(outlook)}</span>`;
+  const label = `Hourly forecast for ${trail.name} on Weather.com`;
+  return `<span class="trail-rain"><a class="rain-peak rain-text-${rainBand(outlook.peak)}" href="${weatherPageUrl(trail)}" target="_blank" rel="noopener" title="${label}" aria-label="${label}">${outlook.peak}%</a>${rainBarsHtml(outlook)}</span>`;
 }
 
-// Map popup block. Has room the 110px column does not, so it spells out the peak
-// and labels both ends of the strip.
+// Map popup block. Has room the 110px column does not, so it labels both ends of
+// the strip. The percentage is plain text here — the popup's links row carries
+// its own Weather link, which unlike the column's works with no forecast too.
 function rainPopupHtml(trail) {
   const outlook = rainOutlook(trail);
   if (!outlook) return "";
@@ -453,7 +469,7 @@ function rainPopupHtml(trail) {
   const last = outlook.hours[outlook.hours.length - 1].label;
   return `
     <div class="map-popup-rain">
-      <div class="rain-title">Rain next ${outlook.hours.length}h<span class="rain-peak rain-text-${rainBand(outlook.peak)}">${outlook.peak}% peak</span></div>
+      <div class="rain-title">Rain next ${outlook.hours.length}h<span class="rain-peak rain-text-${rainBand(outlook.peak)}">${outlook.peak}%</span></div>
       ${rainBarsHtml(outlook)}
       <div class="rain-scale"><span>${first}</span><span>${last}</span></div>
     </div>
@@ -639,6 +655,7 @@ function mapPopupHtml(trail) {
       <div class="map-popup-links">
         <a class="map-popup-link" href="${statusUrl}" target="_blank" rel="noopener">${linkText}</a>
         ${parkingLink}
+        <a class="map-popup-link map-popup-weather" href="${weatherPageUrl(trail)}" target="_blank" rel="noopener">🌧 Weather</a>
       </div>
     </div>
   `;

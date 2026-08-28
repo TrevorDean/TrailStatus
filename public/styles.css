@@ -287,11 +287,21 @@ main {
   min-width: 0;
 }
 
+/* Also the outbound link in the list column (a plain span in the map popup,
+   which links out from its own links row instead). Underline on hover only:
+   a permanently underlined number next to the bars reads as noise at this size,
+   and the title/aria-label carry the affordance for anyone not using a pointer. */
 .rain-peak {
   font-size: 0.78rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  text-decoration: none;
   white-space: nowrap;
+}
+
+a.rain-peak:hover,
+a.rain-peak:focus-visible {
+  text-decoration: underline;
 }
 
 .rain-text-dry { color: var(--muted); }

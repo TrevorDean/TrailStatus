@@ -8,6 +8,8 @@ import { JSDOM } from "jsdom";
 import { readFileSync, writeFileSync } from "node:fs";
 import { TRAILS } from "../public/trails.js";
 
+const weatherUrl = (t) => `https://weather.com/weather/hourbyhour/l/${t.lat},${t.lng}`;
+
 const html = readFileSync("public/index.html", "utf8");
 const src = readFileSync("public/script.js", "utf8")
   .replace('from "/trails.js"', 'from "../public/trails.js"')
@@ -92,6 +94,19 @@ console.log("=== forecast present for some trailheads, absent for the rest ===")
   check("Rain 8h is column 3", heading.children[2].textContent, "Rain 8h");
   check("the rain cell is in column 3 too", cellsOf(withRow)[2].classList.contains("trail-rain"), true);
 
+  // The percentage IS the link — no extra element, so the 110px track is unchanged.
+  const peakLink = withRow.querySelector("a.rain-peak");
+  check("the percentage is a link", !!peakLink, true);
+  check("it points at this trailhead's Weather.com page",
+    peakLink.getAttribute("href"), weatherUrl(TRAILS.find((t) => t.key === WITH[0])));
+  check("it opens in a new tab, with rel=noopener",
+    [peakLink.getAttribute("target"), peakLink.getAttribute("rel")], ["_blank", "noopener"]);
+  check("it has an accessible name beyond the bare number",
+    /Weather\.com/.test(peakLink.getAttribute("aria-label")), true);
+  check("the rain cell adds no second element beside the % and the bars",
+    withRow.querySelector(".trail-rain").children.length, 2);
+  check("the placeholder stays inert", withoutRow.querySelector(".trail-rain a"), null);
+
   // Map popup
   d.querySelector('[data-view="map"]').dispatchEvent(new w.Event("click", { bubbles: true }));
   await new Promise((r) => setTimeout(r, 300));
@@ -100,7 +115,12 @@ console.log("=== forecast present for some trailheads, absent for the rest ===")
   const latest = popups.slice(-TRAILS.length);
   const withBlock = latest.filter((p) => p.includes("map-popup-rain"));
   check("map popups carry the forecast block for trailheads that have one", withBlock.length, WITH.length);
-  check("the popup block spells out the peak", withBlock[0].includes("80% peak"), true);
+  check("the popup shows the bare percentage", withBlock[0].includes(">80%<"), true);
+  // Text only — the class name is still .rain-peak, which is not what shows.
+  check("the word 'peak' is gone from the popup's visible text",
+    /peak/i.test(withBlock[0].replace(/<[^>]+>/g, " ")), false);
+  check("every popup carries a Weather link, forecast or not",
+    latest.filter((p) => p.includes("map-popup-weather")).length, TRAILS.length);
   check("popups for trailheads with no forecast omit the block entirely",
     latest.length - withBlock.length, WITHOUT.length);
 }
