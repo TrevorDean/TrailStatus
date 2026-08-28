@@ -213,16 +213,22 @@ main {
    the heading text in the heading but two buttons in a row, so the two grids
    sized it differently and every column drifted. It is a fixed 280px now.
 
-   Only column 4 needs a nudge, matching .trail-city's 12px padding-left.
-   Columns 2 and 7 centre their content in the track, so centring the heading
-   is enough; the -12px shifts that used to be here were compensating for the
-   track mismatch above and now overshoot. */
+   Only the City column needs a nudge, matching .trail-city's 12px padding-left.
+   Status, Rain 8h and the links column centre their content in the track, so
+   centring the heading is enough; the -12px shifts that used to be here were
+   compensating for the track mismatch above and now overshoot.
+
+   These are explicit nth-child positions, NOT :last-child / :nth-last-child,
+   precisely so that adding a column is a visible edit here rather than a silent
+   re-target. Inserting Rain 8h at position 3 pushed every later column along:
+   City 4 -> 5, links 7 -> 8. */
 .trail-heading span:nth-child(2),
-.trail-heading span:nth-child(7) {
+.trail-heading span:nth-child(3),
+.trail-heading span:nth-child(8) {
   text-align: center;
 }
 
-.trail-heading span:nth-child(4) {
+.trail-heading span:nth-child(5) {
   padding-left: 12px;
 }
 
@@ -234,7 +240,7 @@ main {
   font-size: 0.8rem;
   font-weight: 800;
   gap: 8px;
-  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) 280px;
+  grid-template-columns: minmax(80px, 0.3fr) 100px 110px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) 280px;
   padding: 10px 12px 10px 16px;
   text-transform: uppercase;
 }
@@ -248,13 +254,108 @@ main {
   display: grid;
   position: relative; /* anchors .trail-stats-tip */
   gap: 8px;
-  grid-template-columns: minmax(80px, 0.3fr) 100px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) 280px;
+  grid-template-columns: minmax(80px, 0.3fr) 100px 110px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) 280px;
   min-height: 44px;
   padding: 6px 12px 6px 16px;
 }
 
 .trail-row + .trail-row {
   border-top: 1px solid var(--line);
+}
+
+/* ---- Rain 8h ----
+   A peak percentage plus eight hour bars, in a FIXED 110px track. The strip has
+   no text labels on purpose: eight bars across 110px leaves ~13px each, and any
+   text under them would either wrap or force a content-sized track — which is
+   exactly the drift the heading comment above warns about. The hours live in the
+   bars' title attributes and in the strip's single aria-label instead.
+
+   The blue scale is deliberately not the status palette: green/amber/red already
+   mean open/caution/closed on this page, so a red bar here would read as a
+   closure rather than as rain. */
+:root {
+  --rain-dry: #cfd8e3;
+  --rain-low: #8fb4d9;
+  --rain-mod: #4a86c5;
+  --rain-high: #1f5fa0;
+}
+
+.trail-rain {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rain-peak {
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rain-text-dry { color: var(--muted); }
+.rain-text-low { color: #4a6b8a; }
+.rain-text-mod { color: #2f6ba8; }
+.rain-text-high { color: #17497c; }
+
+.rain-bars {
+  align-items: flex-end;
+  display: flex;
+  gap: 2px;
+  height: 20px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* --pop is the hour's chance of rain, floored at 4% by the renderer so a dry
+   hour still draws a visible baseline tick rather than nothing at all. */
+.rain-bar {
+  background: var(--rain-dry);
+  border-radius: 1px;
+  flex: 1 1 0;
+  height: var(--pop, 4%);
+  min-height: 2px;
+  min-width: 2px;
+}
+
+.rain-bar.rain-low { background: var(--rain-low); }
+.rain-bar.rain-mod { background: var(--rain-mod); }
+.rain-bar.rain-high { background: var(--rain-high); }
+
+.rain-none {
+  color: var(--muted);
+}
+
+/* Map popup: room the column does not have, so the peak is spelled out and both
+   ends of the strip are labelled. */
+.map-popup-rain {
+  border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+  margin-top: 6px;
+  padding-top: 6px;
+}
+
+.map-popup-rain .rain-title {
+  align-items: baseline;
+  color: var(--muted);
+  display: flex;
+  font-weight: 700;
+  gap: 6px;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.map-popup-rain .rain-bars {
+  height: 26px;
+}
+
+.map-popup-rain .rain-scale {
+  color: var(--muted);
+  display: flex;
+  font-size: 0.7rem;
+  justify-content: space-between;
+  margin-top: 2px;
 }
 
 .subsection-heading {
@@ -889,6 +990,30 @@ main {
   }
 
   .parking-none {
+    display: none;
+  }
+
+  /* Rain: the 110px track is gone with the desktop grid, so the strip gets its
+     own full-width line above Directions, labelled like the other stacked
+     fields. The heading is already hidden by the nth-child(n+3) rule above. */
+  .trail-rain {
+    font-size: 0.78rem;
+    grid-column: 1 / -1;
+    margin-top: 4px;
+    order: 0; /* above .row-links, which is order: 1 */
+  }
+
+  .trail-rain::before {
+    content: "Rain next 8h: ";
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .trail-rain .rain-bars {
+    max-width: 140px;
+  }
+
+  .trail-rain.rain-none {
     display: none;
   }
 

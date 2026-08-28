@@ -15,6 +15,8 @@ npm run dev        # wrangler dev --port 8788  (local dev; site at localhost:878
 npm run deploy     # wrangler deploy — deploy the live site (Worker "ntx")
 npx wrangler deploy --env staging   # deploy to ntx-staging.trailstatus.workers.dev
 node scripts/update-trail-status.js # manually run the status scraper (needs CLOUDFLARE_API_TOKEN env var)
+node scripts/update-weather.js               # manually run the weather cron (needs CLOUDFLARE_API_TOKEN)
+node scripts/update-weather.js --dry-run     # fetch the forecast and print it — no token, no KV write
 node scripts/extract-trail-stats.js --local   # re-parse saved HTML in dump/ offline (no network)
 npm run check:parking                        # verify hand-corrected parking hasn't been reverted (exit 1 on drift)
 node scripts/check-manual-parking.js --update # deliberately accept new hand-corrected values
@@ -32,11 +34,17 @@ That token is only needed for the **scraper's KV writes**. `wrangler` itself is 
 
 ## Architecture
 
-Two halves, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, id `84a3ba80...`):
+Three moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, id `84a3ba80...`):
 
 1. **Scraper (write side):** `.github/workflows/trail-status-cron.yml` runs every 5 minutes and executes `scripts/update-trail-status.js` — a plain Node script that fetches each Trailforks page with browser-like headers, regex-parses status/city/LTA out of the tag-stripped HTML, and writes two KV values via the Cloudflare REST API: `trail_statuses_1` and `trail_statuses_2` (the source list is split in half to stay under time limits). Each value is `{ updatedAt, statuses: { [key]: { status, updated, detail, city?, lta? } } }`. City/LTA from the previous run are preserved when a fetch doesn't return them.
 
 2. **Site (read side):** the worker serves static assets from `public/` and handles `GET /api/status`, which merges the two KV parts. (On a cold/empty KV it falls back to scraping live from the Worker — but since Trailforks blocks Cloudflare, expect that fallback to return "Unavailable" statuses.) `public/script.js` fetches `/api/status`, matches results to the `TRAILS` array from `public/trails.js` by `key`, and renders rows grouped into city sections (`SECTION_ORDER`). `LTA_LINKS` in `script.js` maps trail-association names to clickable URLs.
+
+3. **Weather (write side, hourly):** `.github/workflows/weather-cron.yml` runs on the hour and executes `scripts/update-weather.js`, which writes a third KV value, `trail_weather`. It fetches **Open-Meteo** — no API key, and one request carries every trailhead's coordinates, so there is no batching here. The request building and response shaping live in `public/weather.js`, imported by **both** the cron script and `worker.js`, so the two cannot drift. The value is `{ updatedAt, times: [12 epoch seconds], weather: { [key]: { pop, precip, temp } } }` — one shared `times` array, since every location comes from a single request. A failed run **exits non-zero without writing**, leaving the last good forecast in place rather than blanking it.
+
+   Trailheads are grouped by coordinates rounded to 2 decimals (~1.1 km, finer than the model's own resolution) before the request, and the result is fanned back out to every key in the group — the skill parks share their parent region's coordinates, so this shrinks the request without changing an output value.
+
+   Unlike the status scrape, this one **works fine from a Worker**: Open-Meteo does not block Cloudflare the way Trailforks does, which is why `GET /api/weather` can fall back to fetching live when KV is empty, and why `wrangler dev` shows a real forecast locally.
 
 ### Deployment (Worker, not Pages)
 
@@ -140,6 +148,7 @@ All in `public/script.js` + `public/index.html`, no framework:
 - **List / Map toggle** (`[data-view]`). Map view is Leaflet over OpenStreetMap, vendored in `public/vendor/leaflet/` — not a CDN. Markers are `L.divIcon`s coloured by status, built in `renderMap()`; `ensureMap()` lazily initialises the map on first switch to the map view.
 - **Parking** — markers are placed at the trailhead's parking lot when known. `parkingLots(trail)` is the one accessor: it normalises both data shapes into an array of `{ name, lat, lng }`, so nothing downstream has to branch. `markerLatLng()` pins the lot flagged `primary` (else the first) and falls back to `lat`/`lng`; `parkingDirectionsUrl(lot)` takes a lot (not a trail) and builds the Google Maps link — from `lot.plusCode` when it has one, else the coordinates. Google sometimes snaps a raw coordinate to the nearest road instead of the lot (Northshore's MADD Shelter misrouted that way), so a lot may carry a full Open Location Code that Google resolves exactly. **It must stay percent-encoded**: an unencoded `+` reads as a space in the query string and the destination silently fails to resolve. On a single-lot trailhead the field is `parkingPlusCode` at the trail level; `parkingLots()` folds it into the lot so both shapes behave alike. A plus code changes the directions link only — the marker always uses `lat`/`lng`, so move the coordinates too if the pin itself is wrong. All 58 trailheads currently have parking coordinates — 48 whose values a sweep can reproduce, and 10 flagged `parkingSource: "manual"` that it cannot; see the splice guard below for why each is flagged.
 - **Trailheads with more than one lot** use `parking: [{ name, lat, lng }, …]` in `trails.js` instead of `parkingLat`/`parkingLng` — never both. One entry currently does: `northshore` has 3. List view renders one numbered button per lot (`🅿️1 🅿️2 🅿️3`, name on the `title`/`aria-label`); the map popup spells the names out. **Array order is the button numbering, so never reorder it to move the marker** — set `primary: true` on the one lot the marker belongs at instead. Northshore needs this: its lots are listed in the order a rider would consider them, but lot 1 is 3.4 km from the trail and only lot 2 is on it (0.06 km), so the marker is pinned to lot 2 while the buttons keep the given order. **The number is deliberate** — lot names vary in length and the last grid track is a fixed 280px shared with the Trailforks link, so a name-labelled button would overflow it. A single-lot trailhead still renders the original `🅿️ Directions` button, unchanged.
+- **Rain 8h** — an 8-hour chance-of-rain forecast per trailhead, in the list column and the map popup: a peak percentage plus eight hour bars. `rainOutlook(trail)` is the one accessor (nothing else reads `forecast` directly, the way `parkingLots()` is the only reader of the parking shapes) and it slices the window **at read time**, taking the hours at or after the current one — the cron writes hourly but the page is read continuously, which is why `public/weather.js` fetches 12 hours to display 8. It returns `null` when a trailhead has no data or the cached block has aged out, and every caller renders the same `—` placeholder from that, so the row keeps its cell count. `loadWeather()` runs in parallel with `loadStatuses()` and is never awaited by it: a forecast outage must not delay or break the status render. It re-renders with `renderMap(false)` rather than `renderCurrentView()`, so weather arriving a moment after status cannot yank a map the visitor has already moved. The bar palette is deliberately **blue, not the status palette** — green/amber/red already mean open/caution/closed here, so a red bar would read as a closure.
 - **Staging marker** — `script.js` appends "STAGING" to the `h1` and page title when the hostname contains `staging`, so the two environments are distinguishable at a glance.
 - **Favorites** — starred trails persist in `localStorage` under `ntxmtb-favorites` and render in a "Favorites" section above the city groups.
 - **Collapsible sections** — clicking a section heading collapses it; state lives in `collapsedSections` (favorites uses the sentinel key `__favorites__`).
@@ -150,9 +159,11 @@ All in `public/script.js` + `public/index.html`, no framework:
 
 ### The list-view grid has a footgun
 
-Columns are `Trail Name | Status | Updated | City | Avg Difficulty | Trail Org | Trail Info and Directions`. The heading row and the data rows are **two separate CSS grids** that only line up if every track resolves identically — so the template must contain **no content-sized (`auto` / `max-content`) track**. The last track once was `auto`, sizing to the word "DIRECTIONS" in the heading but to two buttons in a row; the difference was redistributed across the `fr` tracks and every column drifted. It is a fixed `280px` now.
+Columns are `Trail Name | Status | Rain 8h | Updated | City | Avg Difficulty | Trail Org | Trail Info and Directions`. The heading row and the data rows are **two separate CSS grids** that only line up if every track resolves identically — so the template must contain **no content-sized (`auto` / `max-content`) track**. The last track once was `auto`, sizing to the word "DIRECTIONS" in the heading but to two buttons in a row; the difference was redistributed across the `fr` tracks and every column drifted. It is a fixed `280px` now.
 
 For the same reason, heading nudges are addressed as explicit `nth-child(n)` positions rather than `:last-child` / `:nth-last-child(2)`, which silently re-target themselves whenever a column is added.
+
+**Adding a column touches five places, and all five must move together:** the two `grid-template-columns` (`.trail-heading` and `.trail-row`), the `.trail-heading span:nth-child(n)` nudges, both copies of the heading `<span>`s in `render()` (the favorites table *and* the city-section table), the cell in `renderRow()`, and the hardcoded count in `verify-stats-toggle.mjs`. The Rain 8h column is the worked example: inserted at position 3, it pushed City from 4 to 5 and the links column from 7 to 8, and its track is a fixed `110px` — eight bars across it leave ~13px each, which is why the strip carries no text labels (any would wrap or force a content-sized track).
 
 ## Trail stats (difficulty rating, mileage, climb)
 
@@ -261,6 +272,7 @@ module relative to `verify/` — so they must be run from the root):
 | `verify-links.mjs` | link hrefs and labels |
 | `verify-override.mjs` | a `difficulty` override wins over the computed band, in column, tooltip and filter |
 | `verify-dom.mjs` | general DOM shape, incl. that a trailhead with no stats offers no tip |
+| `verify-weather.mjs` | the Rain 8h column and the popup block: peak, 8 bars, one aria-label, and that a missing forecast, a 503, or an aged-out cache all keep the row's cell count. **Exits non-zero on failure** |
 
 **What they cannot do:** `JSDOM` is constructed without `resources: "usable"`, so
 `styles.css` is never loaded — no computed styles, no media-query evaluation, no
@@ -268,8 +280,8 @@ layout, no `:hover`. Anything visual still needs a real browser, and headless
 Chromium can't be installed here without sudo. `verify-grid.mjs` exists precisely
 because the grid footgun is invisible to the others.
 
-**They print; most do not fail.** Only `verify-filter-persist` and
-`verify-stats-toggle` exit non-zero. The rest print `FAIL` or `MISMATCH REMAINS`
+**They print; most do not fail.** Only `verify-filter-persist`,
+`verify-stats-toggle` and `verify-weather` exit non-zero. The rest print `FAIL` or `MISMATCH REMAINS`
 and still exit 0, so `npm run verify` cannot yet gate a commit — someone has to
 read the output. Worth fixing if these ever go into CI.
 

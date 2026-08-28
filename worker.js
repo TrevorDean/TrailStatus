@@ -1,4 +1,5 @@
 import { allSources } from "./public/trails.js";
+import { fetchWeather } from "./public/weather.js";
 
 // Cold-start scrape list (used only when KV is empty). Canonical data lives in public/trails.js.
 const sources = allSources();
@@ -21,6 +22,9 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/api/status") {
       return handleStatus(env);
+    }
+    if (url.pathname === "/api/weather") {
+      return handleWeather(env);
     }
     return env.ASSETS.fetch(request);
   }
@@ -50,6 +54,34 @@ async function handleStatus(env) {
   return Response.json(data, {
     headers: { "Cache-Control": "public, max-age=60" }
   });
+}
+
+// Weather is a separate endpoint rather than a field on /api/status on purpose:
+// an Open-Meteo outage must not be able to take the status feed down with it, and
+// the two want different cache lifetimes (the forecast is refreshed hourly).
+async function handleWeather(env) {
+  if (env.TRAIL_CACHE) {
+    const cached = await env.TRAIL_CACHE.get("trail_weather", { type: "json" });
+    if (cached?.times?.length) {
+      return Response.json(cached, {
+        headers: { "Cache-Control": "public, max-age=300" }
+      });
+    }
+  }
+
+  // Cold start — KV not yet populated by the hourly cron. Unlike the status
+  // fallback below this one actually works: Open-Meteo does not block Cloudflare
+  // the way Trailforks does, so `wrangler dev` serves a real forecast locally.
+  try {
+    return Response.json(await fetchWeather(), {
+      headers: { "Cache-Control": "public, max-age=300" }
+    });
+  } catch (error) {
+    return Response.json({ error: error.message, times: [], weather: {} }, {
+      status: 503,
+      headers: { "Cache-Control": "no-store" }
+    });
+  }
 }
 
 async function fetchAllStatuses() {

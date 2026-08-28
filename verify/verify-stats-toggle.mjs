@@ -49,8 +49,10 @@ check("stats buttons = trailheads with stats (+1 dup)", d.querySelectorAll(".sta
 const noStatsKey = TRAILS.find((t) => !TRAIL_STATS[t.key]).key;
 check(`no button for '${noStatsKey}' (no stats)`, rowsFor(noStatsKey)[0].querySelector(".stats-btn"), null);
 check(`no panel for '${noStatsKey}'`, rowsFor(noStatsKey)[0].querySelector(".trail-stats-tip"), null);
-check("row children excl. panel still 7", [...new Set([...d.querySelectorAll(".trail-row")].map(
-  (r) => [...r.children].filter((c) => !c.classList.contains("trail-stats-tip")).length))], [7]);
+// 8 since the Rain 8h column landed. Bump this together with the two
+// grid-template-columns in styles.css and the heading spans in render().
+check("row children excl. panel still 8", [...new Set([...d.querySelectorAll(".trail-row")].map(
+  (r) => [...r.children].filter((c) => !c.classList.contains("trail-stats-tip")).length))], [8]);
 check("panel no longer has role=tooltip", d.querySelector('.trail-stats-tip[role="tooltip"]'), null);
 
 console.log("\n=== toggle ===");

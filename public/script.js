@@ -45,6 +45,12 @@ let activeFilters = new Set();
 let activeStatusFilter = "all";
 let activeDifficulty = "all";
 let statuses = {};
+// Hourly rain forecast from /api/weather, refreshed by the weather cron. Shape
+// mirrors the KV value exactly: one shared `times` array of epoch seconds plus a
+// per-trail-key block of parallel arrays. Empty until loadWeather() resolves, and
+// stays empty if it fails — every reader goes through rainOutlook(), which
+// returns null and lets the UI fall back to a placeholder.
+let forecast = { times: [], weather: {} };
 // The view a FIRST-TIME visitor opens on; afterwards the saved view wins.
 // index.html's markup (active button, hidden classes) must match this, or
 // first-time visitors get a flash of the wrong view before JS runs.
@@ -218,6 +224,7 @@ function render() {
           <div class="trail-heading" role="row">
             <span>Trail Name</span>
             <span>Status</span>
+            <span>Rain 8h</span>
             <span>Updated</span>
             <span>City</span>
             <span>Avg Difficulty</span>
@@ -244,6 +251,7 @@ function render() {
             <div class="trail-heading" role="row">
               <span>Trail Name</span>
               <span>Status</span>
+              <span>Rain 8h</span>
               <span>Updated</span>
               <span>City</span>
               <span>Avg Difficulty</span>
@@ -359,6 +367,99 @@ function markerTooltipText(trail) {
   return `${trail.name} — ${s.totalMiles.toFixed(1)} mi · ${s.totalClimbFt.toLocaleString()} ft climb`;
 }
 
+// --- Rain forecast (from /api/weather; see public/weather.js and the weather cron) ---
+
+// How many hours the UI shows. public/weather.js fetches FORECAST_HOURS (12) so
+// that a cache written up to an hour ago can still fill all 8 slots — that
+// margin is the only reason the two numbers differ, so never raise this past 12
+// without raising the fetch too.
+const RAIN_HOURS = 8;
+
+// Deliberately NOT the status palette. Green/amber/red already mean
+// open/caution/closed on this page, and a red rain bar would read as a closure.
+const RAIN_BANDS = [
+  [20, "dry"],
+  [50, "low"],
+  [70, "mod"],
+  [Infinity, "high"]
+];
+
+function rainBand(pop) {
+  return RAIN_BANDS.find(([limit]) => pop < limit)[1];
+}
+
+// All trailheads are in Central time and the forecast is requested in it, so the
+// label is pinned to America/Chicago rather than the visitor's clock — someone
+// checking North Texas trails from another timezone wants trail-local hours.
+function hourLabel(epochSeconds) {
+  return new Date(epochSeconds * 1000).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    timeZone: "America/Chicago"
+  });
+}
+
+// The ONE accessor for forecast data — nothing else reads `forecast` directly,
+// the way parkingLots() is the only reader of the two parking shapes.
+//
+// The cron writes hourly but the page is read continuously, so the window is
+// sliced here rather than at write time: take the hours at or after the current
+// one, up to RAIN_HOURS of them. Returns null when there is no data for this
+// trailhead or the cached block has aged out entirely, which is what makes every
+// caller's placeholder path the same one.
+function rainOutlook(trail) {
+  const entry = forecast.weather[trail.key];
+  if (!entry || !forecast.times.length) return null;
+  const currentHour = Math.floor(Date.now() / 3600000) * 3600;
+  const hours = [];
+  for (let i = 0; i < forecast.times.length && hours.length < RAIN_HOURS; i++) {
+    if (forecast.times[i] < currentHour) continue;
+    hours.push({
+      label: hourLabel(forecast.times[i]),
+      pop: entry.pop?.[i] ?? 0,
+      precip: entry.precip?.[i] ?? 0
+    });
+  }
+  if (!hours.length) return null;
+  return { hours, peak: Math.max(...hours.map((h) => h.pop)) };
+}
+
+// Shared by the list column and the map popup so the two can't drift apart.
+// role="img" + one aria-label: eight separately-labelled bars would make a
+// screen reader read the whole strip bar by bar for every row on the page.
+// The per-bar title is for pointer hover only.
+function rainBarsHtml(outlook) {
+  const summary = outlook.hours.map((h) => `${h.label} ${h.pop}%`).join(", ");
+  const bars = outlook.hours
+    .map((h) => `<span class="rain-bar rain-${rainBand(h.pop)}" style="--pop:${Math.max(h.pop, 4)}%" title="${h.label} — ${h.pop}% chance of rain"></span>`)
+    .join("");
+  return `<span class="rain-bars" role="img" aria-label="Hourly chance of rain: ${summary}">${bars}</span>`;
+}
+
+// List-view Rain 8h column. Renders an inert placeholder when there is no
+// forecast, exactly as parkingCell() does, so the row keeps its cell count and
+// the two grids stay aligned.
+function rainCell(trail) {
+  const outlook = rainOutlook(trail);
+  if (!outlook) return `<span class="trail-rain rain-none">—</span>`;
+  return `<span class="trail-rain"><span class="rain-peak rain-text-${rainBand(outlook.peak)}">${outlook.peak}%</span>${rainBarsHtml(outlook)}</span>`;
+}
+
+// Map popup block. Has room the 110px column does not, so it spells out the peak
+// and labels both ends of the strip.
+function rainPopupHtml(trail) {
+  const outlook = rainOutlook(trail);
+  if (!outlook) return "";
+  const first = outlook.hours[0].label;
+  const last = outlook.hours[outlook.hours.length - 1].label;
+  return `
+    <div class="map-popup-rain">
+      <div class="rain-title">Rain next ${outlook.hours.length}h<span class="rain-peak rain-text-${rainBand(outlook.peak)}">${outlook.peak}% peak</span></div>
+      ${rainBarsHtml(outlook)}
+      <div class="rain-scale"><span>${first}</span><span>${last}</span></div>
+    </div>
+  `;
+}
+
 function renderRow(trail) {
   const current = statuses[trail.key];
   const hasWidgetStatus = trail.rid || trail.trailId;
@@ -386,6 +487,7 @@ function renderRow(trail) {
     <article class="trail-row${isOpen ? " stats-open" : ""}" data-key="${trail.key}" data-city="${trail.city}" role="row">
       <div class="trail-name-cell">${favBtn}<a class="trail-name" href="${trail.url}" title="${sourceText}" target="_blank" rel="noopener">${trail.name}</a>${statsBtn}</div>
       <span class="status-pill ${statusClass}">${status}</span>
+      ${rainCell(trail)}
       <span class="status-updated">${trail.updatedNote ? `<span class="updated-note" tabindex="0" data-tooltip="${trail.updatedNote}">${updated}</span>` : updated}</span>
       <span class="trail-city">${trail.displayCity || statuses[trail.key]?.city || trail.city}</span>
       <span class="trail-difficulty">${difficultyCell(trail)}</span>
@@ -533,6 +635,7 @@ function mapPopupHtml(trail) {
       <div class="map-popup-meta"><strong>City:</strong> ${city}</div>
       <div class="map-popup-meta"><strong>Trail org:</strong> ${lta}</div>
       ${statsPopupHtml(trail)}
+      ${rainPopupHtml(trail)}
       <div class="map-popup-links">
         <a class="map-popup-link" href="${statusUrl}" target="_blank" rel="noopener">${linkText}</a>
         ${parkingLink}
@@ -595,6 +698,25 @@ async function loadStatuses() {
   }
 
   renderCurrentView();
+}
+
+// Weather is fetched separately from status and never awaited by it: a forecast
+// outage must not delay or break the thing people actually came for. Failure is
+// silent by design — rainOutlook() already renders a placeholder for missing data.
+async function loadWeather() {
+  try {
+    const response = await fetch("/api/weather");
+    if (!response.ok) throw new Error(`Weather request failed with ${response.status}`);
+    const data = await response.json();
+    if (!data?.times?.length) return;
+    forecast = { times: data.times.map(Number), weather: data.weather || {} };
+  } catch (error) {
+    return;
+  }
+  // Not renderCurrentView(): that refits the map bounds, and weather arriving a
+  // moment after status must not yank a map the visitor may already have moved.
+  if (currentView === "map") renderMap(false);
+  else render();
 }
 
 const viewButtons = [...document.querySelectorAll("[data-view]")];
@@ -684,6 +806,7 @@ searchClearEl.addEventListener("click", () => {
 restoreFilters(); // before the first render, so it draws the saved selection
 setView(startView); // saved view if there is one, otherwise DEFAULT_VIEW
 loadStatuses();
+loadWeather(); // in parallel, deliberately not awaited by loadStatuses()
 
 const infoBtn = document.getElementById('info-btn');
 const infoModal = document.getElementById('info-modal');
