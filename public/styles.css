@@ -313,8 +313,12 @@ main {
   text-decoration: underline;
 }
 
+/* List column only — the map popup links out with a text label instead. Sized
+   up from 0.72rem to sit as the cell's obvious affordance rather than a tick
+   beside the number. The 126px track is unchanged: .rain-bar is flex: 1 1 0, so
+   the eight bars absorb the extra ~5px at well under a pixel each. */
 .rain-icon {
-  font-size: 0.72rem;
+  font-size: 1rem;
   line-height: 1;
 }
 
