@@ -240,7 +240,7 @@ main {
   font-size: 0.8rem;
   font-weight: 800;
   gap: 8px;
-  grid-template-columns: minmax(80px, 0.3fr) 100px 110px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) 280px;
+  grid-template-columns: minmax(80px, 0.3fr) 100px 126px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) 280px;
   padding: 10px 12px 10px 16px;
   text-transform: uppercase;
 }
@@ -254,7 +254,7 @@ main {
   display: grid;
   position: relative; /* anchors .trail-stats-tip */
   gap: 8px;
-  grid-template-columns: minmax(80px, 0.3fr) 100px 110px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) 280px;
+  grid-template-columns: minmax(80px, 0.3fr) 100px 126px minmax(50px, 0.15fr) minmax(50px, 0.15fr) minmax(96px, 0.22fr) minmax(50px, 0.15fr) 280px;
   min-height: 44px;
   padding: 6px 12px 6px 16px;
 }
@@ -264,11 +264,13 @@ main {
 }
 
 /* ---- Rain 8h ----
-   A peak percentage plus eight hour bars, in a FIXED 110px track. The strip has
-   no text labels on purpose: eight bars across 110px leaves ~13px each, and any
-   text under them would either wrap or force a content-sized track — which is
-   exactly the drift the heading comment above warns about. The hours live in the
-   bars' title attributes and in the strip's single aria-label instead.
+   A peak percentage, a 🌧 link and eight hour bars, in a FIXED 126px track (110px
+   before the icon; the extra 16px is the icon plus its gap, so the bars kept
+   their width rather than being squeezed). The strip has no text labels on
+   purpose: eight bars across the remaining space leave ~8px each, and any text
+   under them would either wrap or force a content-sized track — which is exactly
+   the drift the heading comment above warns about. The hours live in the bars'
+   title attributes and in the strip's single aria-label instead.
 
    The blue scale is deliberately not the status palette: green/amber/red already
    mean open/caution/closed on this page, so a red bar here would read as a
@@ -287,21 +289,33 @@ main {
   min-width: 0;
 }
 
-/* Also the outbound link in the list column (a plain span in the map popup,
-   which links out from its own links row instead). Underline on hover only:
-   a permanently underlined number next to the bars reads as noise at this size,
-   and the title/aria-label carry the affordance for anyone not using a pointer. */
 .rain-peak {
   font-size: 0.78rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  text-decoration: none;
   white-space: nowrap;
 }
 
-a.rain-peak:hover,
-a.rain-peak:focus-visible {
+/* One anchor wrapping BOTH the percentage and the icon — see rainCell(). The
+   number carries the band colour; the icon is left alone, since recolouring an
+   emoji only mutes it. Underline on hover only: a permanently underlined number
+   next to the bars reads as noise at this size, and the title/aria-label carry
+   the affordance for anyone not using a pointer. */
+.rain-link {
+  align-items: center;
+  display: inline-flex;
+  gap: 3px;
+  text-decoration: none;
+}
+
+.rain-link:hover .rain-peak,
+.rain-link:focus-visible .rain-peak {
   text-decoration: underline;
+}
+
+.rain-icon {
+  font-size: 0.72rem;
+  line-height: 1;
 }
 
 .rain-text-dry { color: var(--muted); }
@@ -366,6 +380,20 @@ a.rain-peak:focus-visible {
   font-size: 0.7rem;
   justify-content: space-between;
   margin-top: 2px;
+}
+
+/* The Weather link sits under the strip it expands on, not down in the shared
+   links row. .map-popup-link already carries the accent colour and weight; this
+   only has to place it on its own line. */
+.map-popup-rain .map-popup-weather {
+  display: inline-block;
+  margin-top: 6px;
+}
+
+/* No forecast: the block is just the link, so it needs no rule above it. */
+.map-popup-rain-empty {
+  border-top: 0;
+  padding-top: 0;
 }
 
 .subsection-heading {

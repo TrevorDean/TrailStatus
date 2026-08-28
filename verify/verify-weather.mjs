@@ -84,7 +84,7 @@ console.log("=== forecast present for some trailheads, absent for the rest ===")
   check("its peak is the max over the 8 shown hours", withRow.querySelector(".rain-peak").textContent, "80%");
   check("it draws exactly 8 hour bars", withRow.querySelectorAll(".rain-bar").length, 8);
   check("the strip carries one aria-label, not eight", withRow.querySelectorAll(".rain-bars[aria-label]").length, 1);
-  check("the peak takes its colour band from the value", withRow.querySelector(".rain-peak").className.includes("rain-text-high"), true);
+  check("the peak takes its colour band from the value", withRow.querySelector(".rain-link").className.includes("rain-text-high"), true);
 
   check("a trailhead with no forecast renders the placeholder", withoutRow.querySelector(".rain-none")?.textContent, "—");
   check("cell counts match with and without a forecast", cellsOf(withRow).length, cellsOf(withoutRow).length);
@@ -94,16 +94,21 @@ console.log("=== forecast present for some trailheads, absent for the rest ===")
   check("Rain 8h is column 3", heading.children[2].textContent, "Rain 8h");
   check("the rain cell is in column 3 too", cellsOf(withRow)[2].classList.contains("trail-rain"), true);
 
-  // The percentage IS the link — no extra element, so the 110px track is unchanged.
-  const peakLink = withRow.querySelector("a.rain-peak");
+  // The percentage and the icon share ONE anchor, so the row announces one link
+  // rather than two to the same page.
+  const peakLink = withRow.querySelector("a.rain-link");
   check("the percentage is a link", !!peakLink, true);
+  check("the icon is inside that same anchor, not a second link",
+    [peakLink.querySelectorAll(".rain-icon").length, withRow.querySelectorAll(".trail-rain a").length], [1, 1]);
+  check("the icon is hidden from screen readers, the anchor is not",
+    peakLink.querySelector(".rain-icon").getAttribute("aria-hidden"), "true");
   check("it points at this trailhead's Weather.com page",
     peakLink.getAttribute("href"), weatherUrl(TRAILS.find((t) => t.key === WITH[0])));
   check("it opens in a new tab, with rel=noopener",
     [peakLink.getAttribute("target"), peakLink.getAttribute("rel")], ["_blank", "noopener"]);
   check("it has an accessible name beyond the bare number",
     /Weather\.com/.test(peakLink.getAttribute("aria-label")), true);
-  check("the rain cell adds no second element beside the % and the bars",
+  check("the rain cell is still just the link and the bars",
     withRow.querySelector(".trail-rain").children.length, 2);
   check("the placeholder stays inert", withoutRow.querySelector(".trail-rain a"), null);
 
@@ -113,16 +118,25 @@ console.log("=== forecast present for some trailheads, absent for the rest ===")
   // renderMap() re-binds every popup on each render and the harness has driven
   // several by now, so only the newest full sweep of markers is meaningful.
   const latest = popups.slice(-TRAILS.length);
-  const withBlock = latest.filter((p) => p.includes("map-popup-rain"));
-  check("map popups carry the forecast block for trailheads that have one", withBlock.length, WITH.length);
+  // Every popup now has a rain block (it carries the Weather link either way);
+  // only the ones with data have a strip inside it.
+  check("every popup has a rain block", latest.filter((p) => p.includes("map-popup-rain")).length, TRAILS.length);
+  const withBlock = latest.filter((p) => p.includes("rain-bars"));
+  check("only trailheads with data get the hour strip", withBlock.length, WITH.length);
   check("the popup shows the bare percentage", withBlock[0].includes(">80%<"), true);
   // Text only — the class name is still .rain-peak, which is not what shows.
   check("the word 'peak' is gone from the popup's visible text",
     /peak/i.test(withBlock[0].replace(/<[^>]+>/g, " ")), false);
   check("every popup carries a Weather link, forecast or not",
     latest.filter((p) => p.includes("map-popup-weather")).length, TRAILS.length);
-  check("popups for trailheads with no forecast omit the block entirely",
-    latest.length - withBlock.length, WITHOUT.length);
+  // The link moved out of the shared links row and under the bars; the block now
+  // renders for every trailhead, carrying just the link when there is no data.
+  check("the Weather link sits inside the rain block, not the links row",
+    /map-popup-rain[\s\S]*map-popup-weather[\s\S]*<\/div>[\s\S]*map-popup-links/.test(withBlock[0]), true);
+  check("it comes after the hour bars", withBlock[0].indexOf("rain-bars") < withBlock[0].indexOf("map-popup-weather"), true);
+  check("a trailhead with no forecast still gets the link, and no strip",
+    latest.filter((p) => p.includes("map-popup-rain-empty") && p.includes("map-popup-weather") && !p.includes("rain-bars")).length,
+    WITHOUT.length);
 }
 
 console.log("\n=== /api/weather returns 503 ===");

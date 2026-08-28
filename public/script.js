@@ -447,24 +447,41 @@ function rainBarsHtml(outlook) {
 // List-view Rain 8h column. Renders an inert placeholder when there is no
 // forecast, exactly as parkingCell() does, so the row keeps its cell count and
 // the two grids stay aligned.
-// The percentage itself is the link out to the full forecast. Deliberately not
-// an added icon: the track is a fixed 110px and eight bars already leave ~13px
-// each, so anything extra would force the column wider and shift every column
-// to its right. Nothing to link when there is no forecast, so the placeholder
-// stays inert — the map popup carries a Weather link that works either way.
+// The percentage and the 🌧 icon are ONE anchor, not two next to each other:
+// both point at the same page, and a screen reader would otherwise announce the
+// same link twice on every row. The icon is aria-hidden because the anchor's
+// aria-label already names the destination — it is decoration that happens to be
+// inside the hit area. Emoji rather than an inline SVG to match the 🅿️ the
+// parking links already use.
+//
+// This is what widened the column's track from 110px to 126px (styles.css). The
+// track stays FIXED, which is the part that matters: a content-sized track here
+// would resolve differently in the heading grid than in the row grid.
+//
+// Nothing to link when there is no forecast, so the placeholder stays inert —
+// the map popup carries a Weather link that works either way.
 function rainCell(trail) {
   const outlook = rainOutlook(trail);
   if (!outlook) return `<span class="trail-rain rain-none">—</span>`;
   const label = `Hourly forecast for ${trail.name} on Weather.com`;
-  return `<span class="trail-rain"><a class="rain-peak rain-text-${rainBand(outlook.peak)}" href="${weatherPageUrl(trail)}" target="_blank" rel="noopener" title="${label}" aria-label="${label}">${outlook.peak}%</a>${rainBarsHtml(outlook)}</span>`;
+  return `<span class="trail-rain"><a class="rain-link rain-text-${rainBand(outlook.peak)}" href="${weatherPageUrl(trail)}" target="_blank" rel="noopener" title="${label}" aria-label="${label}"><span class="rain-peak">${outlook.peak}%</span><span class="rain-icon" aria-hidden="true">🌧</span></a>${rainBarsHtml(outlook)}</span>`;
 }
 
-// Map popup block. Has room the 110px column does not, so it labels both ends of
-// the strip. The percentage is plain text here — the popup's links row carries
-// its own Weather link, which unlike the column's works with no forecast too.
+// Map popup block. Has room the column does not, so it labels both ends of the
+// strip and puts the Weather link on its own line UNDER the bars, rather than
+// down in the shared links row with Trailforks and Directions.
+//
+// The percentage is plain text here — the link below it goes to the same page,
+// and the column's trick of making the number itself the link exists only to
+// save width this popup has plenty of.
+//
+// The block renders even with no forecast, carrying just the link: it needs only
+// coordinates, and a trailhead missing forecast data is exactly the one whose
+// visitor most wants somewhere else to look.
 function rainPopupHtml(trail) {
   const outlook = rainOutlook(trail);
-  if (!outlook) return "";
+  const link = `<a class="map-popup-link map-popup-weather" href="${weatherPageUrl(trail)}" target="_blank" rel="noopener">🌧 Weather</a>`;
+  if (!outlook) return `<div class="map-popup-rain map-popup-rain-empty">${link}</div>`;
   const first = outlook.hours[0].label;
   const last = outlook.hours[outlook.hours.length - 1].label;
   return `
@@ -472,6 +489,7 @@ function rainPopupHtml(trail) {
       <div class="rain-title">Rain next ${outlook.hours.length}h<span class="rain-peak rain-text-${rainBand(outlook.peak)}">${outlook.peak}%</span></div>
       ${rainBarsHtml(outlook)}
       <div class="rain-scale"><span>${first}</span><span>${last}</span></div>
+      ${link}
     </div>
   `;
 }
@@ -655,7 +673,6 @@ function mapPopupHtml(trail) {
       <div class="map-popup-links">
         <a class="map-popup-link" href="${statusUrl}" target="_blank" rel="noopener">${linkText}</a>
         ${parkingLink}
-        <a class="map-popup-link map-popup-weather" href="${weatherPageUrl(trail)}" target="_blank" rel="noopener">🌧 Weather</a>
       </div>
     </div>
   `;
