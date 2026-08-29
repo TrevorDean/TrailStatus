@@ -148,6 +148,23 @@ console.log("\n=== /api/weather returns 503 ===");
   check("no row lost a cell", new Set(rows.map((r) => cellsOf(r).length)).size, 1);
 }
 
+// The bug the user spotted on 2026-08-28: a cron that had not run in 8 hours
+// left a block with only 4 future hours in it, and the strip silently shrank.
+// The Worker now re-fetches rather than serving such a block, but the frontend
+// must still degrade gracefully rather than break if one ever reaches it.
+console.log("\n=== a partly-stale block (only 4 hours still ahead) ===");
+{
+  const short = fakeForecast();
+  const currentHour = Math.floor(Date.now() / 3600000) * 3600;
+  short.times = short.times.map((_, i) => currentHour - (8 - i) * 3600);
+  const { d } = await boot(() => ({ ok: true, json: async () => short }));
+  const row = rowFor(d, WITH[0]);
+  check("it draws one bar per remaining hour, not a broken strip",
+    row.querySelectorAll(".rain-bar").length, 4);
+  check("the row keeps its cell count", cellsOf(row).length, cellsOf(rowFor(d, WITHOUT[0])).length);
+  check("the link still works", !!row.querySelector("a.rain-link"), true);
+}
+
 console.log("\n=== the cached block has aged out (all hours in the past) ===");
 {
   const stale = fakeForecast();

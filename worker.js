@@ -1,5 +1,5 @@
 import { allSources } from "./public/trails.js";
-import { fetchWeather } from "./public/weather.js";
+import { fetchWeather, futureHourCount, DISPLAY_HOURS } from "./public/weather.js";
 
 // Cold-start scrape list (used only when KV is empty). Canonical data lives in public/trails.js.
 const sources = allSources();
@@ -59,24 +59,33 @@ async function handleStatus(env) {
 // Weather is a separate endpoint rather than a field on /api/status on purpose:
 // an Open-Meteo outage must not be able to take the status feed down with it, and
 // the two want different cache lifetimes (the forecast is refreshed hourly).
+//
+// This endpoint is deliberately SELF-HEALING, because the cron that feeds it is
+// not reliable: GitHub throttles `schedule:` to ~hourly at best and drops delayed
+// runs instead of queueing them, so KV can go many hours without a write. A
+// cached block whose hours have mostly slid into the past is treated as no better
+// than an empty one and re-fetched live. Unlike the status fallback below, this
+// one actually works from a Worker — Open-Meteo does not block Cloudflare the way
+// Trailforks does — which is also what makes `wrangler dev` useful.
+const weatherHeaders = { "Cache-Control": "public, max-age=300" };
+
 async function handleWeather(env) {
-  if (env.TRAIL_CACHE) {
-    const cached = await env.TRAIL_CACHE.get("trail_weather", { type: "json" });
-    if (cached?.times?.length) {
-      return Response.json(cached, {
-        headers: { "Cache-Control": "public, max-age=300" }
-      });
-    }
+  const cached = env.TRAIL_CACHE
+    ? await env.TRAIL_CACHE.get("trail_weather", { type: "json" })
+    : null;
+
+  if (futureHourCount(cached?.times) >= DISPLAY_HOURS) {
+    return Response.json(cached, { headers: weatherHeaders });
   }
 
-  // Cold start — KV not yet populated by the hourly cron. Unlike the status
-  // fallback below this one actually works: Open-Meteo does not block Cloudflare
-  // the way Trailforks does, so `wrangler dev` serves a real forecast locally.
   try {
-    return Response.json(await fetchWeather(), {
-      headers: { "Cache-Control": "public, max-age=300" }
-    });
+    return Response.json(await fetchWeather(), { headers: weatherHeaders });
   } catch (error) {
+    // A short block still beats none: better to draw four bars than a row of
+    // placeholders because Open-Meteo happened to be down at this moment.
+    if (cached?.times?.length) {
+      return Response.json(cached, { headers: weatherHeaders });
+    }
     return Response.json({ error: error.message, times: [], weather: {} }, {
       status: 503,
       headers: { "Cache-Control": "no-store" }

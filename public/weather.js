@@ -10,10 +10,18 @@ import { TRAILS } from "./trails.js";
 
 const ENDPOINT = "https://api.open-meteo.com/v1/forecast";
 
-// Fetched vs displayed. The cron runs hourly but the page is read continuously,
-// so the frontend slices "the next 8 hours from now" out of this block itself —
-// the 4-hour margin is what lets a 59-minute-old cache still fill 8 slots.
-export const FORECAST_HOURS = 12;
+// Fetched vs displayed. The cron writes hourly but the page is read
+// continuously, so the frontend slices "the next 8 hours from now" out of this
+// block itself and the surplus is pure staleness margin.
+//
+// It was 12 (a 4-hour margin, sized for an hourly cron). That was too tight in
+// practice: GitHub throttles `schedule:` to roughly hourly AT BEST and DROPS
+// delayed runs rather than queueing them — the weather cron fired once in 20
+// hours on 2026-08-28, the block aged past its own window, and the UI quietly
+// shrank to 4 bars. 24 gives a full day of margin, so a cron that stops
+// overnight costs nothing visible. See also the staleness check below, which
+// catches the case where even this runs out.
+export const FORECAST_HOURS = 24;
 export const DISPLAY_HOURS = 8;
 
 // ~1.1 km, finer than the forecast model's own resolution. Several trailheads
@@ -85,6 +93,16 @@ export function shapeWeatherResponse(payload, groups) {
   });
 
   return { updatedAt: new Date().toISOString(), times, weather };
+}
+
+// How many of a cached block's hours are still ahead of the clock. The number
+// of bars the UI can draw is exactly this, capped at DISPLAY_HOURS — which is
+// why the Worker treats a block that has fallen below DISPLAY_HOURS as no better
+// than an empty one.
+export function futureHourCount(times, now = Date.now()) {
+  if (!times?.length) return 0;
+  const currentHour = Math.floor(now / 3600000) * 3600;
+  return times.filter((t) => t >= currentHour).length;
 }
 
 export async function fetchWeather(trails = TRAILS, fetchImpl = fetch) {
