@@ -46,7 +46,19 @@ Three moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`,
 
    Unlike the status scrape, this one **works fine from a Worker**: Open-Meteo does not block Cloudflare the way Trailforks does, which is why `GET /api/weather` can fall back to fetching live, and why `wrangler dev` shows a real forecast locally.
 
-   **`schedule:` alone does not keep this fed, and the endpoint is built to survive that.** GitHub throttles scheduled workflows to ~hourly at best and **drops** delayed runs rather than queueing them — the same thing `TODO_cron_change.md` recorded for the status scraper, which is why that one is driven by a cron-job.org pinger hitting the `workflow_dispatch` API. The weather cron shipped without one and fired once in 20 hours on 2026-08-28; the cached block aged past its own window and the UI quietly shrank from 8 bars to 4. Two things now absorb that: `FORECAST_HOURS` is **24** (displaying 8, so a full day of staleness margin), and `handleWeather()` treats a block with fewer than `DISPLAY_HOURS` future hours left — `futureHourCount()` in `public/weather.js` — as no better than an empty one and re-fetches live, falling back to the short cached block if Open-Meteo itself is down. **A cron-job.org pinger now drives it too** (added 2026-08-30, hourly at :10, POSTing `{"ref":"main"}` to the workflow's `dispatches` endpoint), so the common path is a KV read rather than a live fetch — same arrangement the status scraper has had since 2026-08-10. `schedule:` stays as the throttled fallback. Setup details and the measurements behind the decision are in `private/TODO_weather_cron_pinger.md`.
+   **`schedule:` alone does not keep this fed, and the endpoint is built to survive that.** GitHub throttles scheduled workflows to ~hourly at best and **drops** delayed runs rather than queueing them — the same thing `TODO_cron_change.md` recorded for the status scraper, which is why that one is driven by a cron-job.org pinger hitting the `workflow_dispatch` API. The weather cron shipped without one and fired once in 20 hours on 2026-08-28; the cached block aged past its own window and the UI quietly shrank from 8 bars to 4. Two things now absorb that: `FORECAST_HOURS` is **24** (displaying 8, so a full day of staleness margin), and `handleWeather()` treats a block with fewer than `DISPLAY_HOURS` future hours left — `futureHourCount()` in `public/weather.js` — as no better than an empty one and re-fetches live, falling back to the short cached block if Open-Meteo itself is down. **A cron-job.org pinger now drives it** (added 2026-08-30), so the common path is a KV read rather than a live fetch — same arrangement the status scraper has had since 2026-08-10. Setup details and the measurements behind the decision are in `private/TODO_weather_cron_pinger.md`.
+
+   The freshness of `trail_weather` is therefore three-deep, and it matters which layer is which:
+
+   | | Trigger | Cadence |
+   | --- | --- | --- |
+   | **Primary** | cron-job.org → `workflow_dispatch` API | `10 * * * *` |
+   | Backup | GitHub `schedule:` in the workflow | `0 * * * *`, in practice ~30% of that |
+   | Backup 2 | `handleWeather()` fetching Open-Meteo live | per request, past the 5-min edge cache |
+
+   The pinger POSTs `{"ref":"main"}` to `https://api.github.com/repos/TrevorDean/TrailStatus/actions/workflows/weather-cron.yml/dispatches` with an `Authorization: Bearer <PAT>` header (the fine-grained token from 2026-08-10, `Actions: Read and write`, expires ~2027-08); a successful dispatch returns **204 No Content**, not 200. **The cron expression is `10 * * * *` — once an hour at ten past, NOT `*/10 * * * *`**, which would be 144 runs a day for a forecast that only changes hourly. The :10 offset is deliberate: the top of the hour is exactly when GitHub's scheduler is most congested.
+
+   `schedule:` stays in the workflow because it costs nothing and covers a cron-job.org outage — but it is the fallback now, not the mechanism.
 
 ### Deployment (Worker, not Pages)
 
