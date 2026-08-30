@@ -20,7 +20,11 @@ node scripts/update-weather.js --dry-run     # fetch the forecast and print it �
 node scripts/extract-trail-stats.js --local   # re-parse saved HTML in dump/ offline (no network)
 npm run check:parking                        # verify hand-corrected parking hasn't been reverted (exit 1 on drift)
 node scripts/check-manual-parking.js --update # deliberately accept new hand-corrected values
-npm run verify                               # run the verify/ frontend harnesses (see below)
+npm run verify                               # run the verify/ harnesses (see below)
+npm run history -- --remote                  # read the status history archive (no UI by design)
+npx wrangler d1 migrations apply ntx-history --remote   # apply a new migrations/ file to the real archive
+npx wrangler d1 migrations apply TRAIL_HISTORY --env staging --remote  # same for staging — by BINDING name, not db name
+curl "http://localhost:8788/__scheduled?cron=*/5+*+*+*+*"  # fire the history cron by hand (needs `wrangler dev --test-scheduled`)
 ```
 
 `staging` and `prod` are Cloudflare **deploy targets**, not git branches — they
@@ -34,7 +38,7 @@ That token is only needed for the **scraper's KV writes**. `wrangler` itself is 
 
 ## Architecture
 
-Three moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, id `84a3ba80...`):
+Four moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, id `84a3ba80...`):
 
 1. **Scraper (write side):** `.github/workflows/trail-status-cron.yml` runs every 5 minutes and executes `scripts/update-trail-status.js` — a plain Node script that fetches each Trailforks page with browser-like headers, regex-parses status/city/LTA out of the tag-stripped HTML, and writes two KV values via the Cloudflare REST API: `trail_statuses_1` and `trail_statuses_2` (the source list is split in half to stay under time limits). Each value is `{ updatedAt, statuses: { [key]: { status, updated, detail, city?, lta? } } }`. City/LTA from the previous run are preserved when a fetch doesn't return them.
 
@@ -63,6 +67,16 @@ Three moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`,
    **A Cloudflare Cron Trigger would remove all of this, and was deliberately not taken (2026-08-30).** `[triggers] crons` in `wrangler.toml` plus a `scheduled()` handler writing KV through the binding the Worker already has would retire the cron-job.org job, the PAT, the GitHub workflow and `scripts/update-weather.js` in one move — and Open-Meteo does not block Cloudflare, so the Legacy section's "do not move scraping back onto a Worker" does **not** apply here; that is about Trailforks only. It was declined because the pinger works and the churn was not worth it. Revisit if cron-job.org gets flaky, or when the PAT expires.
 
    **The PAT is a single point of failure for BOTH crons.** The same fine-grained token (created 2026-08-10, `Actions: Read and write`, ~1-year expiry) authenticates all three cron-job.org jobs — two status batches and the weather one. When it expires they all start returning 401 and **fail silently**: cron-job.org keeps firing, GitHub keeps refusing, and nothing surfaces in the Actions log because no run is ever created. Weather degrades invisibly (the Worker re-fetches live), but **status has no such fallback** — Trailforks blocks Cloudflare, so `/api/status` would quietly serve a frozen scrape. Rotation is tracked in `private/TODO.md` for July 2027.
+
+4. **Status history (archive, every 5 min):** the Worker's `scheduled()` handler calls `recordStatusChanges()` in **`history.js`**, which reads the same two KV parts `/api/status` does, diffs them against the `trail_state` table in **D1** (`ntx-history`, binding `TRAIL_HISTORY`), and records anything that changed. Schema and reasoning: `migrations/0001_status_history.sql`. **Transitions, not samples** — an unchanged status writes nothing, so a normal run inserts one `scrape_runs` heartbeat row and no more.
+
+   **This is the Cloudflare Cron Trigger that was deferred for weather, and here it is clearly right.** It touches `scripts/update-trail-status.js` zero times — that script is the load-bearing one and this feature deliberately does not go near it — and it needs no `D1: Edit` on `CLOUDFLARE_API_TOKEN`, because a Worker uses a **binding**, not a token. Nothing is scraped: the data is already in KV, so "Trailforks blocks Cloudflare" never applies.
+
+   **`Unknown` and `Unavailable` are not statuses — they are the absence of an observation**, and `isRealStatus()` rejects both. `fetchStatus()` returns `Unavailable` on any fetch error, and with 58 trails polled every 5 minutes, recording `Open → Unavailable → Open` on every transient 403 would bury the real transitions within days. Skipping them is also why the diff compares against **`trail_state` in D1 rather than the previous KV value**: KV holds whatever was last scraped, D1 holds the last *real* status, so `Open → Unavailable (3h) → Closed` correctly records one `Open → Closed`. The two are not interchangeable.
+
+   Statuses are stored **verbatim** (`Ideal`, `Very Dry`, `Prevalent Mud`, …), never collapsed into the three buckets `statusClassFor()` uses for the UI — bucketing is lossy and a future reader can always bucket, never unbucket. Writes go through one `db.batch()`, which is a single implicit transaction, so a run lands completely or not at all; a half-written run would leave `trail_state` ahead of `status_events` and silently swallow the next real transition.
+
+   **There is no read endpoint and no UI, on purpose** — the archive is collected but not published. Read it with `npm run history` (add `--remote` for the real one). **Staging has its own database** (`ntx-history-staging`) and **no cron trigger**: staging shares production's KV, so a shared archive would mean two Workers recording the same transitions. Note the wrangler quirk — a staging migration is addressed by the **binding** name (`TRAIL_HISTORY --env staging`), not the database name, which fails with "Couldn't find a D1 DB".
 
 ### Deployment (Worker, not Pages)
 
@@ -290,6 +304,7 @@ module relative to `verify/` — so they must be run from the root):
 | `verify-links.mjs` | link hrefs and labels |
 | `verify-override.mjs` | a `difficulty` override wins over the computed band, in column, tooltip and filter |
 | `verify-dom.mjs` | general DOM shape, incl. that a trailhead with no stats offers no tip |
+| `verify-history.mjs` | **No jsdom, no D1** — `diffStatuses()` as a pure function: first sighting, unchanged runs writing nothing, and that an `Unavailable` outage collapses to a single transition spanning it. **Exits non-zero on failure** |
 | `verify-weather.mjs` | the Rain 8h column and the popup block: peak, 8 bars, one aria-label, and that a missing forecast, a 503, or an aged-out cache all keep the row's cell count. **Exits non-zero on failure** |
 
 **What they cannot do:** `JSDOM` is constructed without `resources: "usable"`, so
@@ -299,7 +314,7 @@ Chromium can't be installed here without sudo. `verify-grid.mjs` exists precisel
 because the grid footgun is invisible to the others.
 
 **They print; most do not fail.** Only `verify-filter-persist`,
-`verify-stats-toggle` and `verify-weather` exit non-zero. The rest print `FAIL` or `MISMATCH REMAINS`
+`verify-stats-toggle`, `verify-weather` and `verify-history` exit non-zero. The rest print `FAIL` or `MISMATCH REMAINS`
 and still exit 0, so `npm run verify` cannot yet gate a commit — someone has to
 read the output. Worth fixing if these ever go into CI.
 

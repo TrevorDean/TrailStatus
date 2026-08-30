@@ -12,6 +12,17 @@ directory = "public"
 binding = "TRAIL_CACHE"
 id = "84a3ba80c5fd4563b0bdb87f852a1993"
 
+# Status history archive, written by the scheduled() handler in worker.js.
+[[d1_databases]]
+binding = "TRAIL_HISTORY"
+database_name = "ntx-history"
+database_id = "b47953ca-9247-475e-bb40-955b77cb77a3"
+
+# Drives that handler. Matches the scraper's own ~5-minute cadence; trail status
+# changes on the order of days, so a few minutes of attribution latency is fine.
+[triggers]
+crons = ["*/5 * * * *"]
+
 [env.staging]
 name = "ntx-staging"
 
@@ -24,3 +35,15 @@ directory = "public"
 [[env.staging.kv_namespaces]]
 binding = "TRAIL_CACHE"
 id = "84a3ba80c5fd4563b0bdb87f852a1993"
+
+# Staging gets its OWN history database. Staging shares production's KV, so a
+# shared archive would mean two Workers recording the same transitions into one
+# table — duplicate events, and a corrupted record of when things actually changed.
+[[env.staging.d1_databases]]
+binding = "TRAIL_HISTORY"
+database_name = "ntx-history-staging"
+database_id = "adf6d662-5c2c-44bd-9749-f4c4b5e793f5"
+
+# NOTE: no [env.staging.triggers] on purpose — staging must never record on a
+# schedule. Fire it by hand when testing:
+#   curl "http://localhost:8788/__scheduled?cron=*/5+*+*+*+*"

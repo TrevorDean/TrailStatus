@@ -1,5 +1,6 @@
 import { allSources } from "./public/trails.js";
 import { fetchWeather, futureHourCount, DISPLAY_HOURS } from "./public/weather.js";
+import { recordStatusChanges } from "./history.js";
 
 // Cold-start scrape list (used only when KV is empty). Canonical data lives in public/trails.js.
 const sources = allSources();
@@ -27,6 +28,14 @@ export default {
       return handleWeather(env);
     }
     return env.ASSETS.fetch(request);
+  },
+
+  // Status history archive. Every 5 minutes, diff the KV scrape against D1 and
+  // record anything that changed — see history.js. Deliberately NOT wired into
+  // fetch(): there is no /api/history route, because this is an archive the user
+  // asked to collect but not to publish yet.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(recordStatusChanges(env));
   }
 };
 

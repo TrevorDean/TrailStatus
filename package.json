@@ -4,7 +4,8 @@
     "dev": "wrangler dev --port 8788",
     "deploy": "wrangler deploy --env=\"\"",
     "check:parking": "node scripts/check-manual-parking.js",
-    "verify": "for f in verify/verify-*.mjs; do echo \"--- $f\"; node \"$f\" || exit 1; done"
+    "verify": "for f in verify/verify-*.mjs; do echo \"--- $f\"; node \"$f\" || exit 1; done",
+    "history": "node scripts/history-report.js"
   },
   "devDependencies": {
     "jsdom": "^30.0.1",
