@@ -60,6 +60,10 @@ Three moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`,
 
    `schedule:` stays in the workflow because it costs nothing and covers a cron-job.org outage — but it is the fallback now, not the mechanism.
 
+   **A Cloudflare Cron Trigger would remove all of this, and was deliberately not taken (2026-08-30).** `[triggers] crons` in `wrangler.toml` plus a `scheduled()` handler writing KV through the binding the Worker already has would retire the cron-job.org job, the PAT, the GitHub workflow and `scripts/update-weather.js` in one move — and Open-Meteo does not block Cloudflare, so the Legacy section's "do not move scraping back onto a Worker" does **not** apply here; that is about Trailforks only. It was declined because the pinger works and the churn was not worth it. Revisit if cron-job.org gets flaky, or when the PAT expires.
+
+   **The PAT is a single point of failure for BOTH crons.** The same fine-grained token (created 2026-08-10, `Actions: Read and write`, ~1-year expiry) authenticates all three cron-job.org jobs — two status batches and the weather one. When it expires they all start returning 401 and **fail silently**: cron-job.org keeps firing, GitHub keeps refusing, and nothing surfaces in the Actions log because no run is ever created. Weather degrades invisibly (the Worker re-fetches live), but **status has no such fallback** — Trailforks blocks Cloudflare, so `/api/status` would quietly serve a frozen scrape. Rotation is tracked in `private/TODO.md` for July 2027.
+
 ### Deployment (Worker, not Pages)
 
 The live site is the Cloudflare **Worker** `ntx` (`wrangler.toml`: `main = worker.js`, `public/` as assets, plus an `ntx-staging` env), deployed with `npx wrangler deploy`. (There used to be a `public/.assetsignore` excluding `_worker.js` from the asset upload; both are gone.)
