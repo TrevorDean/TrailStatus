@@ -433,38 +433,46 @@ function rainOutlook(trail) {
 }
 
 // Shared by the list column and the map popup so the two can't drift apart.
-// role="img" + one aria-label: eight separately-labelled bars would make a
-// screen reader read the whole strip bar by bar for every row on the page.
-// The per-bar title is for pointer hover only.
+// aria-hidden because BOTH callers now wrap the strip in an anchor that carries
+// its own aria-label — without this a screen reader would read the link's name
+// and then the strip again, on every row of the page. The per-bar title stays
+// for pointer hover, and the hourly numbers live in the anchor's title.
 function rainBarsHtml(outlook) {
-  const summary = outlook.hours.map((h) => `${h.label} ${h.pop}%`).join(", ");
   const bars = outlook.hours
     .map((h) => `<span class="rain-bar rain-${rainBand(h.pop)}" style="--pop:${Math.max(h.pop, 4)}%" title="${h.label} — ${h.pop}% chance of rain"></span>`)
     .join("");
-  return `<span class="rain-bars" role="img" aria-label="Hourly chance of rain: ${summary}">${bars}</span>`;
+  return `<span class="rain-bars" aria-hidden="true">${bars}</span>`;
+}
+
+// One link description, used by both views. aria-label stays short — it is read
+// out on all 58 rows — while the hour-by-hour numbers go in `title`, where they
+// are available on hover without being announced every time.
+function rainLinkAttrs(trail, outlook) {
+  const hourly = outlook.hours.map((h) => `${h.label} ${h.pop}%`).join(", ");
+  return `href="${weatherPageUrl(trail)}" target="_blank" rel="noopener"` +
+    ` title="Rain next ${outlook.hours.length}h — ${hourly}. Opens Weather.com."` +
+    ` aria-label="${trail.name}: rain next ${outlook.hours.length} hours, peak ${outlook.peak}%. Opens the hourly forecast on Weather.com."`;
 }
 
 // List-view Rain 8h column. Renders an inert placeholder when there is no
 // forecast, exactly as parkingCell() does, so the row keeps its cell count and
 // the two grids stay aligned.
-// The percentage and the 🌧 icon are ONE anchor, not two next to each other:
-// both point at the same page, and a screen reader would otherwise announce the
-// same link twice on every row. The icon is aria-hidden because the anchor's
-// aria-label already names the destination — it is decoration that happens to be
-// inside the hit area. Emoji rather than an inline SVG to match the 🅿️ the
-// parking links already use.
+// The ENTIRE cell is one anchor — percentage, icon and all eight bars — so a
+// click anywhere in the column goes to the forecast. One anchor rather than
+// several: they would all point at the same page, and a screen reader would
+// announce the same link repeatedly on every row. Everything inside is therefore
+// decoration (aria-hidden or unlabelled); the anchor alone carries the name.
 //
-// This is what widened the column's track from 110px to 126px (styles.css). The
-// track stays FIXED, which is the part that matters: a content-sized track here
-// would resolve differently in the heading grid than in the row grid.
+// The icon is what widened the column's track from 110px to 126px (styles.css).
+// The track stays FIXED, which is the part that matters: a content-sized track
+// here would resolve differently in the heading grid than in the row grid.
 //
 // Nothing to link when there is no forecast, so the placeholder stays inert —
 // the map popup carries a Weather link that works either way.
 function rainCell(trail) {
   const outlook = rainOutlook(trail);
   if (!outlook) return `<span class="trail-rain rain-none">—</span>`;
-  const label = `Hourly forecast for ${trail.name} on Weather.com`;
-  return `<span class="trail-rain"><a class="rain-link rain-text-${rainBand(outlook.peak)}" href="${weatherPageUrl(trail)}" target="_blank" rel="noopener" title="${label}" aria-label="${label}"><span class="rain-peak">${outlook.peak}%</span><span class="rain-icon" aria-hidden="true">🌧</span></a>${rainBarsHtml(outlook)}</span>`;
+  return `<a class="trail-rain rain-link rain-text-${rainBand(outlook.peak)}" ${rainLinkAttrs(trail, outlook)}><span class="rain-peak">${outlook.peak}%</span><span class="rain-icon" aria-hidden="true">🌧</span>${rainBarsHtml(outlook)}</a>`;
 }
 
 // Map popup block. Has room the column does not, so it labels both ends of the
@@ -480,17 +488,24 @@ function rainCell(trail) {
 // visitor most wants somewhere else to look.
 function rainPopupHtml(trail) {
   const outlook = rainOutlook(trail);
-  const link = `<a class="map-popup-link map-popup-weather" href="${weatherPageUrl(trail)}" target="_blank" rel="noopener">🌧 Weather</a>`;
-  if (!outlook) return `<div class="map-popup-rain map-popup-rain-empty">${link}</div>`;
+  // A SPAN, not an anchor: the whole block is the anchor now, and nesting one
+  // inside another is invalid HTML that browsers silently unnest. It keeps the
+  // .map-popup-link class, which is styled by class rather than by element, so it
+  // still reads as the link it visually is.
+  const cta = `<span class="map-popup-link map-popup-weather">🌧 Weather</span>`;
+  if (!outlook) {
+    const label = `Hourly forecast for ${trail.name} on Weather.com`;
+    return `<a class="map-popup-rain map-popup-rain-empty" href="${weatherPageUrl(trail)}" target="_blank" rel="noopener" title="${label}" aria-label="${label}">${cta}</a>`;
+  }
   const first = outlook.hours[0].label;
   const last = outlook.hours[outlook.hours.length - 1].label;
   return `
-    <div class="map-popup-rain">
-      <div class="rain-title">Rain next ${outlook.hours.length}h<span class="rain-peak rain-text-${rainBand(outlook.peak)}">${outlook.peak}%</span></div>
+    <a class="map-popup-rain" ${rainLinkAttrs(trail, outlook)}>
+      <span class="rain-title">Rain next ${outlook.hours.length}h<span class="rain-peak rain-text-${rainBand(outlook.peak)}">${outlook.peak}%</span></span>
       ${rainBarsHtml(outlook)}
-      <div class="rain-scale"><span>${first}</span><span>${last}</span></div>
-      ${link}
-    </div>
+      <span class="rain-scale"><span>${first}</span><span>${last}</span></span>
+      ${cta}
+    </a>
   `;
 }
 
