@@ -25,6 +25,65 @@ export function isRealStatus(status) {
   return !NOT_AN_OBSERVATION.has(String(status || "").trim().toLowerCase());
 }
 
+// Trailforks' own "last updated" string, resolved to an absolute time.
+//
+// This is the STEWARD's action time, and it is the correct label for a model
+// predicting when a steward reopens a trail. observed_at is only when the
+// scraper noticed — up to 5 minutes later on a good day, and arbitrarily later
+// across a cron outage.
+//
+// Trailforks reports it two ways, and the resolution differs sharply between
+// them: recent changes come back relative and minute-accurate ("2 mins"), older
+// ones as a bare day with no time at all ("Jul 17, 2026"). Rather than flatten
+// both into a timestamp and imply a precision the second kind does not have,
+// the return value CARRIES its own precision: a date-only string stays 10
+// characters, a resolved relative time is a full ISO instant. Anything reading
+// this column can tell the two apart by length, and must.
+const RELATIVE_UNITS = [
+  [/^min(ute)?s?$/i, 60],
+  [/^h(ou)?rs?$/i, 3600],
+  [/^days?$/i, 86400],
+  [/^weeks?$/i, 604800],
+  [/^months?$/i, 2592000],
+  [/^years?$/i, 31536000]
+];
+
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+export function parseReportedAt(reported, observedAt) {
+  const raw = String(reported || "").trim();
+  if (!raw) return null;
+
+  const relative = raw.match(/^(\d+)\s*([A-Za-z]+)\.?(?:\s+ago)?$/);
+  if (relative) {
+    const seconds = RELATIVE_UNITS.find(([re]) => re.test(relative[2]))?.[1];
+    if (seconds) {
+      const base = Date.parse(observedAt);
+      if (Number.isFinite(base)) {
+        return new Date(base - Number(relative[1]) * seconds * 1000).toISOString();
+      }
+    }
+    return null;
+  }
+
+  const absolute = raw.match(/^([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})$/);
+  if (absolute) {
+    const month = MONTHS.indexOf(absolute[1].slice(0, 3).toLowerCase());
+    if (month >= 0) {
+      // Date-only on purpose — see above. Building a UTC midnight here would
+      // invent a time Trailforks never reported.
+      const mm = String(month + 1).padStart(2, "0");
+      const dd = String(Number(absolute[2])).padStart(2, "0");
+      return `${absolute[3]}-${mm}-${dd}`;
+    }
+  }
+
+  // "just now", "a few seconds", and anything else unrecognised. NULL rather
+  // than a guess: observed_at is already the better answer for a transition
+  // this archive actually watched.
+  return null;
+}
+
 // The whole decision, as a pure function of two plain objects — no D1, no KV, no
 // clock. Everything interesting about this feature is testable through here
 // (verify/verify-history.mjs), which is the reason it takes `now` as an argument
@@ -60,6 +119,7 @@ export function diffStatuses(previousState, current, now) {
       status: entry.status,
       detail: entry.detail ?? null,
       reported_at: entry.updated || null,
+      reported_ts: parseReportedAt(entry.updated, observedAt),
       observed_at: observedAt
     });
   }
@@ -101,8 +161,8 @@ export async function recordStatusChanges(env, now = new Date()) {
   for (const e of events) {
     statements.push(
       db.prepare(
-        "INSERT INTO status_events (trail_key, prev_status, status, detail, reported_at, observed_at) VALUES (?, ?, ?, ?, ?, ?)"
-      ).bind(e.trail_key, e.prev_status, e.status, e.detail, e.reported_at, e.observed_at),
+        "INSERT INTO status_events (trail_key, prev_status, status, detail, reported_at, reported_ts, observed_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      ).bind(e.trail_key, e.prev_status, e.status, e.detail, e.reported_at, e.reported_ts, e.observed_at),
       db.prepare(
         `INSERT INTO trail_state (trail_key, status, detail, reported_at, observed_at)
          VALUES (?, ?, ?, ?, ?)

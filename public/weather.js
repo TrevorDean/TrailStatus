@@ -111,3 +111,134 @@ export async function fetchWeather(trails = TRAILS, fetchImpl = fetch) {
   if (!response.ok) throw new Error(`Open-Meteo returned ${response.status}`);
   return shapeWeatherResponse(await response.json(), groups);
 }
+
+// ---------------------------------------------------------------------------
+// Archive side — the variable set the reopening model is built on.
+//
+// Everything above serves the RIDER: chance of rain for the next 8 hours. What
+// follows serves the ARCHIVE, and the two want different columns. Rain and
+// temperature alone barely explain drying; the physically right quantity is a
+// water balance (rain in, evapotranspiration out), and Open-Meteo will compute
+// both for free from the same endpoint:
+//
+//   et0_fao_evapotranspiration  FAO Penman-Monteith — folds temperature,
+//                               humidity, wind and solar radiation into ONE
+//                               drying number, which is why temperature on its
+//                               own is not in the feature list.
+//   soil_moisture_*             the model's own estimate of how wet the dirt is,
+//                               which is very nearly the quantity a trail
+//                               steward is judging when they walk the trail.
+//
+// UNITS ARE NOT PER-VARIABLE, and this bites twice. `precipitation_unit` governs
+// ET0 as well as rainfall, and `temperature_unit` governs soil temperature as
+// well as air temperature — so with the settings below, ET0 comes back in INCHES
+// (~0.19 in/day here, which reads like a broken number until you realise it is
+// 4.75 mm/day) and soil temperature in FAHRENHEIT. Keeping ET0 in inches is
+// deliberate: rainfall and ET0 in one unit makes the water balance a plain
+// subtraction. Change either unit and you silently rescale a stored column.
+//
+// It shares groupByLocation() and ENDPOINT with the display path on purpose:
+// one request builder, one rounding rule, no chance of the archive and the UI
+// disagreeing about where a trailhead is.
+
+// Order matters — it is the column order of an ARCHIVE_ROW and of the INSERT in
+// migrations/0002_weather_history.sql. Add to the end, never the middle.
+export const ARCHIVE_VARS = [
+  "precipitation",
+  "temperature_2m",
+  "et0_fao_evapotranspiration",
+  "relative_humidity_2m",
+  "wind_speed_10m",
+  "shortwave_radiation",
+  "soil_moisture_0_to_1cm",
+  "soil_moisture_1_to_3cm",
+  "soil_moisture_3_to_9cm",
+  "soil_temperature_0cm"
+];
+
+// past_days is capped at 92 by Open-Meteo. Asking for more is not an error — it
+// silently returns 92 — so the ceiling is asserted here rather than discovered
+// as a short backfill months later.
+export const MAX_PAST_DAYS = 92;
+
+export function archiveRequestUrl(groups, { pastDays = 0, forecastDays = 1 } = {}) {
+  if (pastDays > MAX_PAST_DAYS) {
+    throw new Error(`past_days ${pastDays} exceeds Open-Meteo's ${MAX_PAST_DAYS}-day limit`);
+  }
+  const params = new URLSearchParams({
+    latitude: groups.map((g) => g.lat).join(","),
+    longitude: groups.map((g) => g.lng).join(","),
+    hourly: ARCHIVE_VARS.join(","),
+    temperature_unit: "fahrenheit",
+    precipitation_unit: "inch",
+    timezone: "America/Chicago",
+    timeformat: "unixtime",
+    past_days: String(pastDays),
+    forecast_days: String(forecastDays)
+  });
+  return `${ENDPOINT}?${params}`;
+}
+
+// Flattens to one row per trail per hour: [trail_key, hour_ts, ...ARCHIVE_VARS].
+// Rows, not nested objects, because the only consumer is a D1 INSERT and the
+// shape should not have to be un-nested on the way in.
+export function shapeArchiveResponse(payload, groups) {
+  const entries = Array.isArray(payload) ? payload : [payload];
+  if (entries.length !== groups.length) {
+    throw new Error(`Open-Meteo returned ${entries.length} locations for ${groups.length} requested`);
+  }
+
+  const rows = [];
+  entries.forEach((entry, i) => {
+    const hourly = entry?.hourly;
+    if (!hourly?.time?.length) throw new Error(`Open-Meteo returned no hourly block for location ${i}`);
+
+    hourly.time.forEach((t, h) => {
+      // A null is "the model did not produce a value here", which is not zero.
+      // Storing it as NULL keeps a gap in the record distinguishable from a dry
+      // hour — the same reason history.js refuses to record "Unavailable".
+      const values = ARCHIVE_VARS.map((v) => {
+        const n = hourly[v]?.[h];
+        return n == null ? null : Number(n);
+      });
+      for (const key of groups[i].keys) rows.push([key, Number(t), ...values]);
+    });
+  });
+  return rows;
+}
+
+export async function fetchArchiveWeather(trails = TRAILS, options = {}, fetchImpl = fetch) {
+  const groups = groupByLocation(trails);
+  const response = await fetchImpl(archiveRequestUrl(groups, options));
+  if (!response.ok) throw new Error(`Open-Meteo returned ${response.status}`);
+  return shapeArchiveResponse(await response.json(), groups);
+}
+
+// The forward forecast, kept as one row per trail per snapshot.
+//
+// This is the ONLY thing here that cannot be recovered later. past_days returns
+// the model's after-the-fact analysis, never the forecast that was actually on
+// screen at the time, so without these a backtest of "what would we have
+// predicted on Tuesday" is quietly scored with hindsight it never had.
+export function shapeForecastSnapshot(payload, groups, snapshotTs) {
+  const entries = Array.isArray(payload) ? payload : [payload];
+  const rows = [];
+  entries.forEach((entry, i) => {
+    const hourly = entry?.hourly;
+    if (!hourly?.time?.length) throw new Error(`Open-Meteo returned no hourly block for location ${i}`);
+    const times = hourly.time.map(Number);
+    const pick = (v) => JSON.stringify((hourly[v] || []).map((n) => (n == null ? null : Number(n))));
+    for (const key of groups[i].keys) {
+      rows.push([
+        key,
+        snapshotTs,
+        times[0],
+        JSON.stringify(times),
+        pick("precipitation"),
+        pick("temperature_2m"),
+        pick("et0_fao_evapotranspiration")
+      ]);
+    }
+  });
+  return rows;
+}

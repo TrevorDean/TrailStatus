@@ -1,6 +1,7 @@
 import { allSources } from "./public/trails.js";
 import { fetchWeather, futureHourCount, DISPLAY_HOURS } from "./public/weather.js";
 import { recordStatusChanges } from "./history.js";
+import { recordWeatherHour } from "./weather-history.js";
 
 // Cold-start scrape list (used only when KV is empty). Canonical data lives in public/trails.js.
 const sources = allSources();
@@ -30,12 +31,22 @@ export default {
     return env.ASSETS.fetch(request);
   },
 
-  // Status history archive. Every 5 minutes, diff the KV scrape against D1 and
-  // record anything that changed — see history.js. Deliberately NOT wired into
-  // fetch(): there is no /api/history route, because this is an archive the user
-  // asked to collect but not to publish yet.
+  // Two archives, both write-only. Every 5 minutes, diff the KV scrape against
+  // D1 and record anything that changed (history.js); on the first run of each
+  // hour, also record that hour's weather (weather-history.js). Deliberately NOT
+  // wired into fetch(): there is no /api/history route, because these are
+  // archives the user asked to collect but not to publish yet.
+  //
+  // They are waited on SEPARATELY and each swallows its own failure. Status is
+  // the load-bearing one; an Open-Meteo outage must never be able to cost us a
+  // transition, and a transition recorded is not worth losing to a weather 503.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(recordStatusChanges(env));
+    ctx.waitUntil(recordStatusChanges(env).catch((error) => {
+      console.error(`status archive failed: ${error.message}`);
+    }));
+    ctx.waitUntil(recordWeatherHour(env).catch((error) => {
+      console.error(`weather archive failed: ${error.message}`);
+    }));
   }
 };
 

@@ -22,10 +22,22 @@ npm run check:parking                        # verify hand-corrected parking has
 node scripts/check-manual-parking.js --update # deliberately accept new hand-corrected values
 npm run verify                               # run the verify/ harnesses (see below)
 npm run history -- --remote                  # read the status history archive (no UI by design)
-npx wrangler d1 migrations apply ntx-history --remote   # apply a new migrations/ file to the real archive
-npx wrangler d1 migrations apply TRAIL_HISTORY --env staging --remote  # same for staging — by BINDING name, not db name
+node scripts/backfill-weather.js --dry-run    # fetch 92 days of past weather and report — writes nothing
+node scripts/backfill-weather.js --days 30 --apply  # ...and load it into D1 (see the write budget note)
+node scripts/build-episodes.js --remote       # derive the closure-episode training table (read-only)
+node scripts/build-episodes.js --remote --csv # ...as CSV, for plotting elsewhere
+node scripts/extract-soil.js                  # re-check soil against scripts/soil.lock.json (exit 1 on drift)
+node scripts/extract-soil.js --write          # look up soil and splice it into trails.js (one-time)
+CI=true npx wrangler d1 migrations apply ntx-history --remote   # apply a new migrations/ file to the real archive
+CI=true npx wrangler d1 migrations apply TRAIL_HISTORY --env staging --remote  # same for staging — by BINDING name, not db name
 curl "http://localhost:8788/__scheduled?cron=*/5+*+*+*+*"  # fire the history cron by hand (needs `wrangler dev --test-scheduled`)
 ```
+
+`CI=true` on the migration commands is not decoration. `wrangler d1 migrations
+apply` asks "continue?" and, without a TTY to answer it, **exits having applied
+nothing while still printing its explanatory blurb** — it looks like it worked.
+`CI=true` makes it take the non-interactive fallback (`yes`). Always confirm with
+`wrangler d1 migrations list` afterwards rather than trusting the output.
 
 `staging` and `prod` are Cloudflare **deploy targets**, not git branches — they
 are selected by the `--env` flag, not by which branch is checked out. Both share
@@ -38,7 +50,7 @@ That token is only needed for the **scraper's KV writes**. `wrangler` itself is 
 
 ## Architecture
 
-Four moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, id `84a3ba80...`):
+Five moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, id `84a3ba80...`):
 
 1. **Scraper (write side):** `.github/workflows/trail-status-cron.yml` runs every 5 minutes and executes `scripts/update-trail-status.js` — a plain Node script that fetches each Trailforks page with browser-like headers, regex-parses status/city/LTA out of the tag-stripped HTML, and writes two KV values via the Cloudflare REST API: `trail_statuses_1` and `trail_statuses_2` (the source list is split in half to stay under time limits). Each value is `{ updatedAt, statuses: { [key]: { status, updated, detail, city?, lta? } } }`. City/LTA from the previous run are preserved when a fetch doesn't return them.
 
@@ -86,6 +98,32 @@ Four moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, 
 
    **There is no read endpoint and no UI, on purpose** — the archive is collected but not published. Read it with `npm run history` (add `--remote` for the real one). **Staging has its own database** (`ntx-history-staging`) and **no cron trigger**: staging shares production's KV, so a shared archive would mean two Workers recording the same transitions. Note the wrangler quirk — a staging migration is addressed by the **binding** name (`TRAIL_HISTORY --env staging`), not the database name, which fails with "Couldn't find a D1 DB".
 
+5. **Weather archive (training data, hourly):** the same `scheduled()` handler also calls `recordWeatherHour()` in **`weather-history.js`**, which fetches Open-Meteo and writes one row per trailhead per hour into `weather_hourly` in the same D1 database. Schema and reasoning: `migrations/0002_weather_history.sql`. This exists to answer one question — **when will a closed trail reopen?** — and nothing reads it yet.
+
+   **It fetches, where `history.js` only reads KV.** That is allowed here for the same reason `/api/weather` may fall back to a live fetch: Open-Meteo does not block Cloudflare. The "do not move scraping back onto a Worker" rule in Legacy is about **Trailforks only**.
+
+   **Rain and temperature are the wrong feature set, which is why the columns look the way they do.** Drying is a water balance — rain in, evapotranspiration out — so the archive stores `et0_in` (FAO Penman-Monteith, which already folds temperature, humidity, wind and solar radiation into one number) and **modelled soil moisture at three depths**, which is very nearly the quantity a steward is judging when they walk the trail. `ARCHIVE_VARS` in `public/weather.js` is the canonical list and **its order is the column order** of both the INSERT and the migration; append to it, never insert into the middle.
+
+   **Units are not per-variable, and this is the trap.** Open-Meteo applies `precipitation_unit` to **ET0** as well as rainfall, and `temperature_unit` to **soil temperature** as well as air temperature. So ET0 arrives in inches (~0.19 in/day, which reads like a broken number until you realise it is 4.75 mm/day) and soil temperature in Fahrenheit. Inches for ET0 is worth keeping — rainfall and ET0 in one unit makes the water balance a plain `precip_in - et0_in` subtraction — but changing either unit in `weather.js` silently rescales a stored column, so rename it in the same commit if that ever happens.
+
+   **`forecast_snapshots` is the only table here that cannot be backfilled.** `past_days` returns the model's after-the-fact *analysis*, never the forecast that was actually available at the time, so backtesting "what would we have predicted on Tuesday" against the analysis grades the model with hindsight it never had and every score comes out flattering. One vintage per trail per day is captured; the guard is simply "is the newest snapshot under a day old".
+
+   Everything else here **is** backfillable, which is why the weather record starts **2026-06-03** — nearly three months before the status archive it will be joined to. `scripts/backfill-weather.js` pulls 92 days (Open-Meteo's cap, asserted as `MAX_PAST_DAYS`) from the same endpoint and the same model as the live cron, so there is no seam. **Mind the write budget**: 92 days × 24 h × 58 trailheads is ~129,000 rows, over D1's free-tier daily write allowance. Every statement is `INSERT OR REPLACE`, so `--days 30` three times on consecutive days is safe and the overlap costs nothing.
+
+   **Two chunk sizes, two unrelated limits — do not copy one to the other.** `weather-history.js` binds parameters, and **D1 caps bound parameters per statement at 100**, not rows: 12 columns means 8 rows per INSERT, derived from `COLUMNS.length` rather than hardcoded so adding a column narrows it automatically. Hardcoding 40 there failed at runtime with "too many SQL variables" and was invisible until the cron actually ran. `backfill-weather.js` writes SQL *literals* to a file instead, so its limit is request size, not parameters.
+
+   The cron fires every 5 minutes because the status diff wants that cadence; `recordWeatherHour()` guards on `MAX(hour_ts)` so 11 of every 12 runs do one cheap SELECT and stop. A gap heals itself by catching up to **48 hours**, capped so an outage cannot produce an unbounded write burst. The two archives are `waitUntil`-ed **separately and each swallows its own failure** — status is load-bearing, and an Open-Meteo 503 must never cost a transition.
+
+   **`status_events.reported_ts`** was added by the same migration. `reported_at` stays verbatim (it is the raw record); `reported_ts` resolves it to an absolute time, because Trailforks' string is the **steward's action time** and that is the correct label for a model predicting steward behaviour, where `observed_at` is only when the scraper noticed. **The precision is self-describing and callers must respect it**: a 10-character value is day-granular (`"Jul 17, 2026"`), anything longer is a resolved relative time (`"2 mins"`). Prefer `observed_at` for transitions this archive actually watched; `reported_ts` is for seeding events that predate 2026-08-30.
+
+   **Trailhead coordinates are good enough for this — with one exception that matters.** Measured 2026-09-03: the 58 trailheads resolve to **55 distinct Open-Meteo grid cells**, median offset from true coordinates **1.25 km**, max 1.95 km (HRRR ~3 km; `models=gfs_hrrr` returns the identical cell, so `best_match` is already using it). The 2-decimal rounding in `groupByLocation()` collapses 58 into 55 and all three collapsed groups are genuinely co-located — **leave the rounding alone**. Temperature, ET0 and soil moisture vary smoothly over 3 km, and the offset is smaller than the trail systems themselves. **Rainfall is the weak link**, and it is what the model leans on hardest: North Texas convection drops 2″ on one cell and 0.1″ three miles away, and `past_days` is *model output, not a gauge reading*. If prediction error ever tracks rainfall error, the upgrade is radar QPE (NOAA MRMS, ~1 km) or nearby gauge observations — not a prerequisite, and not worth building until the data says so.
+
+   **Soil is the largest non-weather driver.** `soilSeries`, `drainageClass` and `hydGroup` are on every entry in `trails.js`, looked up once from USDA NRCS SSURGO by `scripts/extract-soil.js` (free, no key, works anywhere — unlike the Trailforks tooling it needs no Actions runner). The spread is the whole point: **A=3, B=8, C=17, D=30**. Big Cedar is Stephen silty clay, group **D** (highest runoff, slowest to drain); Lindsey Park in Tyler is Pickton loamy fine sand, group **A**. Identical rain on those two does not produce remotely similar reopening times. Values are pinned in `scripts/soil.lock.json` and a bare `node scripts/extract-soil.js` exits 1 on drift, same discipline as `check:parking`. Note that trailhead coordinates are not survey markers — Tyler State Park's landed in a lake — so the lookup falls back through the parking coordinate and then a ring of offsets before giving up.
+
+   **`scripts/build-episodes.js` derives the training table** — one row per closure episode, weather joined, written nowhere. An episode whose start predates the archive is flagged `start_known: 0`, because its duration is a **lower bound, not a duration**, and averaging those in biases every fit downward. `isClosedStatus()` there mirrors `statusClassFor()` in `script.js` (Wet and Prevalent Mud count as closed); that is a **modelling choice, not a fact about the data**, and if it changes in one place it must change in both.
+
+   **Expect the model to be a year away, and expect the first surprise to be a data-quality one.** As of 2026-09-04 the archive holds 2 completed episodes, both Big Cedar, and **both had zero rain in the preceding 72 hours** — so neither was weather-driven. Trail work, races and park events close trails too, and if those land in the training set the model learns that rain sometimes does not matter. Budget for hand-labelling the first season. The other constraint is statistical: every trail in a region sees the same storm, so 58 trails × 20 storms is **not** 1,160 samples — the effective count is nearer 20–30 independent events per year, which rules out machine learning and argues for a few-parameter physical model pooled across trails.
+
 ### Deployment (Worker, not Pages)
 
 The live site is the Cloudflare **Worker** `ntx` (`wrangler.toml`: `main = worker.js`, `public/` as assets, plus an `ntx-staging` env), deployed with `npx wrangler deploy`. (There used to be a `public/.assetsignore` excluding `_worker.js` from the asset upload; both are gone.)
@@ -120,6 +158,11 @@ Five optional fields are **hand-maintained and never regenerated** by a sweep, s
 
 Counts are current as of the last edit — `npm run check:parking` reports the
 `parkingSource` figure, and the others are a one-line filter over `TRAILS`.
+
+`soilSeries` / `drainageClass` / `hydGroup` are a different kind of field: they
+are on **all 58** entries, were looked up once by `scripts/extract-soil.js`, and
+are never re-swept. They are not hand-maintained, but they are not regenerated
+either — `scripts/soil.lock.json` is what keeps them honest.
 
 ### `parkingSource: "manual"` — do not overwrite these
 
@@ -295,7 +338,7 @@ Note `--local` only ever sees the **first page** of a paginated listing, since o
 
 ## Verifying frontend changes
 
-There is no test framework, but `verify/` holds nine harnesses that boot the real
+There is no test framework, but `verify/` holds twelve harnesses that boot the real
 `public/script.js` with Leaflet and `fetch` stubbed and assert on the DOM it
 produces. Run them all with **`npm run verify`**, or one at a time from the repo
 root (they resolve `public/…` relative to the cwd, and their generated temp
@@ -313,6 +356,7 @@ module relative to `verify/` — so they must be run from the root):
 | `verify-override.mjs` | a `difficulty` override wins over the computed band, in column, tooltip and filter |
 | `verify-dom.mjs` | general DOM shape, incl. that a trailhead with no stats offers no tip |
 | `verify-history.mjs` | **No jsdom, no D1** — `diffStatuses()` as a pure function: first sighting, unchanged runs writing nothing, and that an `Unavailable` outage collapses to a single transition spanning it. **Exits non-zero on failure** |
+| `verify-weather-history.mjs` | **No jsdom, no D1, no network** — the weather archive's pure functions: request building (including that the unit coupling is still `inch`/`fahrenheit`), row shaping and fan-out to co-located trailheads, that a null stays NULL rather than becoming 0, forecast-vintage JSON, the catch-up arithmetic, and `parseReportedAt()`'s precision contract. **Exits non-zero on failure** |
 | `verify-weather.mjs` | the Rain 8h column and the popup block: peak, 8 bars, one aria-label, and that a missing forecast, a 503, or an aged-out cache all keep the row's cell count. **Exits non-zero on failure** |
 
 **What they cannot do:** `JSDOM` is constructed without `resources: "usable"`, so

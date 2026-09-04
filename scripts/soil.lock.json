@@ -1,0 +1,292 @@
+{
+  "quanah-hill": {
+    "soilSeries": "Windthorst",
+    "drainageClass": "Moderately well drained",
+    "hydGroup": "C"
+  },
+  "parks-of-aledo": {
+    "soilSeries": "Denton",
+    "drainageClass": "Well drained",
+    "hydGroup": "C"
+  },
+  "trinity-track": {
+    "soilSeries": "Brackett",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "western-heritage-park": {
+    "soilSeries": "Santo",
+    "drainageClass": "Well drained",
+    "hydGroup": "A"
+  },
+  "the-pit": {
+    "soilSeries": "Denton",
+    "drainageClass": "Well drained",
+    "hydGroup": "C"
+  },
+  "chisenhall": {
+    "soilSeries": "Pursley",
+    "drainageClass": "Well drained",
+    "hydGroup": "B"
+  },
+  "fossil-creek-park": {
+    "soilSeries": "Purves",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "gateway-park": {
+    "soilSeries": "Frio",
+    "drainageClass": "Well drained",
+    "hydGroup": "C"
+  },
+  "marion-sansom": {
+    "soilSeries": "Bolar",
+    "drainageClass": "Well drained",
+    "hydGroup": "C"
+  },
+  "north-z-boaz-park": {
+    "soilSeries": "Urban land",
+    "drainageClass": null,
+    "hydGroup": "D"
+  },
+  "the-woods-at-dunlop-park": {
+    "soilSeries": "Bastsil",
+    "drainageClass": "Well drained",
+    "hydGroup": "B"
+  },
+  "lindsey-park": {
+    "soilSeries": "Pickton",
+    "drainageClass": "Well drained",
+    "hydGroup": "A"
+  },
+  "faulkner-park": {
+    "soilSeries": "Wolfpen",
+    "drainageClass": "Well drained",
+    "hydGroup": "B"
+  },
+  "tyler-state-park": {
+    "soilSeries": "Pickton",
+    "drainageClass": "Well drained",
+    "hydGroup": "A"
+  },
+  "arbor-hills": {
+    "soilSeries": "Ferris",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "barber-hills": {
+    "soilSeries": "Freestone",
+    "drainageClass": "Moderately well drained",
+    "hydGroup": "C"
+  },
+  "big-cedar": {
+    "soilSeries": "Stephen",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "binkley-park": {
+    "soilSeries": "Normangee",
+    "drainageClass": "Moderately well drained",
+    "hydGroup": "C"
+  },
+  "bonham-state-park": {
+    "soilSeries": "Whitewright",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "boulder-park": {
+    "soilSeries": "Whitewright",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "cedar-hill-state-park": {
+    "soilSeries": "Ferris",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "corinth-community-park": {
+    "soilSeries": "Callisburg",
+    "drainageClass": "Well drained",
+    "hydGroup": "C"
+  },
+  "creekside-park-dorba": {
+    "soilSeries": "Lewisville",
+    "drainageClass": "Well drained",
+    "hydGroup": "B"
+  },
+  "creekside-park-skillpark": {
+    "soilSeries": "Frio",
+    "drainageClass": "Well drained",
+    "hydGroup": "C"
+  },
+  "cross-timbers": {
+    "soilSeries": "Crosstell",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "dinosaur-valley-state-park": {
+    "soilSeries": "Venus",
+    "drainageClass": "Well drained",
+    "hydGroup": "B"
+  },
+  "eisenhower-state-park": {
+    "soilSeries": "Sanger",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "erwin-park": {
+    "soilSeries": "Austin",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "erwin-park-skill-park": {
+    "soilSeries": "Austin",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "frisco-northwest-community-park": {
+    "soilSeries": "Stephen",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "goat-island-preserve": {
+    "soilSeries": "Trinity",
+    "drainageClass": "Moderately well drained",
+    "hydGroup": "D"
+  },
+  "hachie-mtb-trail": {
+    "soilSeries": "Stephen",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "harry-moss-park": {
+    "soilSeries": "Frio",
+    "drainageClass": "Well drained",
+    "hydGroup": "C"
+  },
+  "horseshoe": {
+    "soilSeries": "Crosstell",
+    "drainageClass": "Moderately well drained",
+    "hydGroup": "D"
+  },
+  "katie-jackson-park-dorba": {
+    "soilSeries": "Houston Black",
+    "drainageClass": "Moderately well drained",
+    "hydGroup": "D"
+  },
+  "katie-jackson-park-skillpark": {
+    "soilSeries": "Stephen",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "knob-hills": {
+    "soilSeries": "Wilson",
+    "drainageClass": "Moderately well drained",
+    "hydGroup": "C"
+  },
+  "lb-houston-park": {
+    "soilSeries": "Trinity",
+    "drainageClass": "Moderately well drained",
+    "hydGroup": "D"
+  },
+  "mineola-nature-preserve": {
+    "soilSeries": "Gladewater",
+    "drainageClass": "Somewhat poorly drained",
+    "hydGroup": "D"
+  },
+  "northshore": {
+    "soilSeries": "Birome",
+    "drainageClass": "Well drained",
+    "hydGroup": "C"
+  },
+  "preserve-at-maxwell-creek": {
+    "soilSeries": "Houston Black",
+    "drainageClass": "Moderately well drained",
+    "hydGroup": "D"
+  },
+  "oak-cliff-nature-preserve": {
+    "soilSeries": "Eddy",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "paul-dryer-preserve": {
+    "soilSeries": "Austin",
+    "drainageClass": "Well drained",
+    "hydGroup": "C"
+  },
+  "pecan-grove-park": {
+    "soilSeries": "Lewisville",
+    "drainageClass": "Well drained",
+    "hydGroup": "C"
+  },
+  "ray-roberts-isle-du-bois": {
+    "soilSeries": "Gasil",
+    "drainageClass": "Well drained",
+    "hydGroup": "B"
+  },
+  "ray-roberts-johnson-branch": {
+    "soilSeries": "Justin",
+    "drainageClass": "Well drained",
+    "hydGroup": "C"
+  },
+  "jeff-laquey": {
+    "soilSeries": "Crockett",
+    "drainageClass": "Moderately well drained",
+    "hydGroup": "D"
+  },
+  "bridgeport": {
+    "soilSeries": "Hassee",
+    "drainageClass": "Moderately well drained",
+    "hydGroup": "D"
+  },
+  "river-legacy-park": {
+    "soilSeries": "Frio",
+    "drainageClass": "Well drained",
+    "hydGroup": "C"
+  },
+  "red-kane-park": {
+    "soilSeries": "Crosstell",
+    "drainageClass": "Moderately well drained",
+    "hydGroup": "D"
+  },
+  "rowlett-creek-preserve": {
+    "soilSeries": "Houston Black",
+    "drainageClass": "Moderately well drained",
+    "hydGroup": "D"
+  },
+  "sister-grove-park": {
+    "soilSeries": "Houston Black",
+    "drainageClass": "Moderately well drained",
+    "hydGroup": "D"
+  },
+  "squabble-creek": {
+    "soilSeries": "Tinn",
+    "drainageClass": "Moderately well drained",
+    "hydGroup": "D"
+  },
+  "waterloo-lake": {
+    "soilSeries": "Gasil",
+    "drainageClass": "Well drained",
+    "hydGroup": "B"
+  },
+  "wildcat-ranch": {
+    "soilSeries": "Heiden",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "cameron-park": {
+    "soilSeries": "Stephen",
+    "drainageClass": "Well drained",
+    "hydGroup": "D"
+  },
+  "lacy-point": {
+    "soilSeries": "Sunev",
+    "drainageClass": "Well drained",
+    "hydGroup": "B"
+  },
+  "woodway-park": {
+    "soilSeries": "McLennan",
+    "drainageClass": "Well drained",
+    "hydGroup": "C"
+  }
+}
