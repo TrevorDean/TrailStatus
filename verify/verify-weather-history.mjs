@@ -107,5 +107,35 @@ console.log("\n=== reported_at -> reported_ts ===");
   check("empty is NULL", parseReportedAt("", observed), null);
 }
 
+console.log("\n=== standing closures (Big Cedar: Sunday + Monday) ===");
+{
+  const { scheduledOverlap, localDow } = await import("../scripts/build-episodes.js");
+  const { TRAILS } = await import("../public/trails.js");
+  const bigCedar = TRAILS.find((t) => t.key === "big-cedar");
+  const plain = TRAILS.find((t) => t.key === "northshore");
+  const ts = (iso) => Date.parse(iso) / 1000;
+
+  check("Big Cedar carries a schedule", bigCedar.scheduledClosure.days, [0, 1]);
+  // 2026-08-30T05:15Z is Sunday 00:15 LOCAL — the UTC day is already the 30th,
+  // so getUTCDay() would answer Sunday here by luck and Monday an hour later.
+  check("weekday is local, not UTC", localDow(ts("2026-08-31T02:40:00Z")), 0);
+
+  // The two real episodes in the archive.
+  check("Sunday-morning closure is flagged",
+    scheduledOverlap(bigCedar, ts("2026-08-30T05:00:00Z"), ts("2026-08-30T17:59:00Z")), 1);
+  // Closes 9:40pm Sunday, reopens 1am TUESDAY — the overhang the grace absorbs.
+  check("Monday closure reopening after midnight is flagged",
+    scheduledOverlap(bigCedar, ts("2026-08-31T02:38:00Z"), ts("2026-09-01T05:58:00Z")), 1);
+
+  // A closure that starts on a scheduled day but runs deep into the week is a
+  // weather closure wearing a Sunday hat, and must NOT be written off.
+  check("Sunday -> Thursday is NOT written off as scheduled",
+    scheduledOverlap(bigCedar, ts("2026-08-30T05:00:00Z"), ts("2026-09-03T17:00:00Z")), 0);
+  check("a Wednesday closure is not scheduled",
+    scheduledOverlap(bigCedar, ts("2026-09-02T14:00:00Z"), ts("2026-09-03T14:00:00Z")), 0);
+  check("a trail with no schedule never flags",
+    scheduledOverlap(plain, ts("2026-08-30T05:00:00Z"), ts("2026-08-30T17:59:00Z")), 0);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -46,11 +46,53 @@ function eventTime(row) {
   return Date.parse(row.observed_at) / 1000;
 }
 
+// Local weekday, America/Chicago. A standing closure is defined by the day a
+// human experiences, so UTC is the wrong frame: Big Cedar's Monday closure
+// starts around 9:40pm Sunday LOCAL, which is already Monday in UTC.
+const DOW = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", weekday: "short" });
+const DAYS = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+export function localDow(ts) {
+  return DAYS[DOW.format(new Date(ts * 1000))];
+}
+
+// Some trails close on a fixed schedule regardless of weather — Big Cedar is
+// shut Sunday morning and all day Monday. Those episodes are REAL closures and
+// belong in the archive, but they are not drying events: a model fitted on them
+// learns that trails reopen on Tuesdays, which is true and useless.
+//
+// This flags rather than filters. Dropping data is the modeller's call at fit
+// time, not this script's at derive time, and a mis-set schedule that silently
+// deleted rows would be far harder to notice than one that mislabels them.
+// A steward does not reopen at the stroke of midnight, so the closure spills
+// past its own schedule: Big Cedar's Monday closure ends at 1:00am TUESDAY,
+// and a strict "every hour is a scheduled day" test rejects it over that one
+// hour. The trailing grace absorbs that overhang. It is deliberately one-sided
+// — the closure must still START on a scheduled day — so a genuine weather
+// closure that happens to begin on a Sunday and run to Thursday is not
+// swallowed by it.
+const REOPEN_GRACE = 6 * 3600;
+
+export function scheduledOverlap(trail, closedTs, openedTs) {
+  const days = trail?.scheduledClosure?.days;
+  if (!days?.length) return 0;
+  if (!days.includes(localDow(closedTs))) return 0;
+  for (let t = closedTs; t < openedTs - REOPEN_GRACE; t += 3600) {
+    if (!days.includes(localDow(t))) return 0;
+  }
+  return 1;
+}
+
 function sum(rows, field, from, to) {
   return rows.reduce((acc, r) => (r.hour_ts >= from && r.hour_ts < to ? acc + (r[field] || 0) : acc), 0);
 }
 
+// Guarded so verify/ can import scheduledOverlap() without the module shelling
+// out to wrangler on import.
+const isMain = process.argv[1] && process.argv[1].endsWith("build-episodes.js");
+
 (async () => {
+  if (!isMain) return;
   const remote = process.argv.includes("--remote");
   const csv = process.argv.includes("--csv");
 
@@ -101,9 +143,15 @@ function sum(rows, field, from, to) {
           rain_during: +sum(w, "precip_in", closedAt.ts, openedTs).toFixed(3),
           et0_during: +sum(w, "et0_in", closedAt.ts, openedTs).toFixed(3),
           soil_moist_at_open: w.find((x) => x.hour_ts >= openedTs - HOUR)?.soil_moist_0_1 ?? null,
+          // 1 = every hour of this closure fell on a scheduled-closure day, so
+          // the schedule alone explains it. Exclude these before fitting.
+          scheduled: scheduledOverlap(t, closedAt.ts, openedTs),
           month: new Date(openedTs * 1000).getUTCMonth() + 1,
-          opened_dow: new Date(openedTs * 1000).getUTCDay(),
-          opened_hour_utc: new Date(openedTs * 1000).getUTCHours()
+          closed_dow_local: localDow(closedAt.ts),
+          opened_dow_local: localDow(openedTs),
+          opened_hour_local: Number(new Intl.DateTimeFormat("en-US", {
+            timeZone: "America/Chicago", hour: "2-digit", hour12: false
+          }).format(new Date(openedTs * 1000)))
         });
         closedAt = null;
       }
@@ -121,7 +169,9 @@ function sum(rows, field, from, to) {
   }
 
   console.log(`${events.length} status events, ${weather.length} weather hours`);
-  console.log(`${episodes.length} closure episode(s), ${episodes.filter((e) => e.start_known).length} with a known start\n`);
+  const scheduled = episodes.filter((e) => e.scheduled).length;
+  console.log(`${episodes.length} closure episode(s), ${episodes.filter((e) => e.start_known).length} with a known start`);
+  console.log(`${scheduled} explained by a standing schedule, ${episodes.length - scheduled} candidate weather closure(s)\n`);
   if (episodes.length === 0) {
     console.log("No completed closures yet — a trail must go closed AND reopen to make an episode.");
     return;
@@ -133,6 +183,7 @@ function sum(rows, field, from, to) {
     opened: e.opened_at.slice(0, 16),
     hrs: e.hours_closed,
     known: e.start_known ? "y" : "n",
+    sched: e.scheduled ? "y" : "",
     "rain72h": e.rain_72h_before,
     "et0": e.et0_during
   })));
