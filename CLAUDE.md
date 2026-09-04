@@ -70,6 +70,14 @@ Four moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, 
 
 4. **Status history (archive, every 5 min):** the Worker's `scheduled()` handler calls `recordStatusChanges()` in **`history.js`**, which reads the same two KV parts `/api/status` does, diffs them against the `trail_state` table in **D1** (`ntx-history`, binding `TRAIL_HISTORY`), and records anything that changed. Schema and reasoning: `migrations/0001_status_history.sql`. **Transitions, not samples** — an unchanged status writes nothing, so a normal run inserts one `scrape_runs` heartbeat row and no more.
 
+   **The archive begins at `2026-08-30T05:15:07.609Z`** (2026-08-30 00:15 CDT, local) — the first `scrape_runs` heartbeat and the first batch of `status_events`, written the night the D1 database was created. **There is no data before that instant, and every trail's oldest row is a first observation, not a transition** (`prev_status` is NULL): the status it records had already been in effect for an unknown time. Any "how long has this trail been open/closed" question over a window reaching back past 2026-08-30 is therefore answering a shorter window than asked, and an initial `Closed` stretch is a lower bound, never the real duration. Confirm the true span before quoting a number:
+
+   ```sql
+   SELECT MIN(ran_at), MAX(ran_at), COUNT(*) FROM scrape_runs;
+   ```
+
+   The same query catches heartbeat gaps — a stretch with no runs is the scraper being down, not a trail holding its status, which is exactly the distinction `scrape_runs` exists to preserve.
+
    **This is the Cloudflare Cron Trigger that was deferred for weather, and here it is clearly right.** It touches `scripts/update-trail-status.js` zero times — that script is the load-bearing one and this feature deliberately does not go near it — and it needs no `D1: Edit` on `CLOUDFLARE_API_TOKEN`, because a Worker uses a **binding**, not a token. Nothing is scraped: the data is already in KV, so "Trailforks blocks Cloudflare" never applies.
 
    **`Unknown` and `Unavailable` are not statuses — they are the absence of an observation**, and `isRealStatus()` rejects both. `fetchStatus()` returns `Unavailable` on any fetch error, and with 58 trails polled every 5 minutes, recording `Open → Unavailable → Open` on every transient 403 would bury the real transitions within days. Skipping them is also why the diff compares against **`trail_state` in D1 rather than the previous KV value**: KV holds whatever was last scraped, D1 holds the last *real* status, so `Open → Unavailable (3h) → Closed` correctly records one `Open → Closed`. The two are not interchangeable.
