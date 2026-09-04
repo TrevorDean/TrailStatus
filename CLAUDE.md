@@ -108,6 +108,32 @@ Five moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, 
 
    **Rain and temperature are the wrong feature set, which is why the columns look the way they do.** Drying is a water balance — rain in, evapotranspiration out — so the archive stores `et0_in` (FAO Penman-Monteith, which already folds temperature, humidity, wind and solar radiation into one number) and **modelled soil moisture at three depths**, which is very nearly the quantity a steward is judging when they walk the trail. `ARCHIVE_VARS` in `public/weather.js` is the canonical list and **its order is the column order** of both the INSERT and the migration; append to it, never insert into the middle.
 
+   What is stored, one row per trailhead per hour, keyed `(trail_key, hour_ts)` — `hour_ts` is epoch seconds at the top of the hour, UTC:
+
+   | Column | Open-Meteo variable | Unit | Model | Why it is here |
+   | --- | --- | --- | --- | --- |
+   | `precip_in` | `precipitation` | inches | HRRR ~3 km | Water **in** — the driver of every weather closure. This hour only, not cumulative |
+   | `temp_f` | `temperature_2m` | °F | HRRR ~3 km | Context. Weak as a drying predictor on its own, which is the whole reason `et0_in` exists |
+   | `et0_in` | `et0_fao_evapotranspiration` | **inches** | HRRR ~3 km | Water **out** — FAO Penman-Monteith reference evapotranspiration, already folding temperature, humidity, wind and radiation into one number |
+   | `humidity_pct` | `relative_humidity_2m` | % | HRRR ~3 km | An ET0 input, kept raw in case a model wants it directly |
+   | `wind_kmh` | `wind_speed_10m` | km/h | HRRR ~3 km | Surface drying. **Not** affected by `temperature_unit` |
+   | `radiation_wm2` | `shortwave_radiation` | W/m² | HRRR ~3 km | Sun actually landing on the trail — the nearest thing to a shade proxy until canopy data exists |
+   | `soil_moist_0_1` | `soil_moisture_0_to_1cm` | m³/m³ | **ICON ~11 km** | The surface a tyre meets |
+   | `soil_moist_1_3` | `soil_moisture_1_to_3cm` | m³/m³ | **ICON ~11 km** | Just beneath it |
+   | `soil_moist_3_9` | `soil_moisture_3_to_9cm` | m³/m³ | **ICON ~11 km** | The slow layer, which still holds water after the surface looks dry |
+   | `soil_temp_f` | `soil_temperature_0cm` | **°F** | **ICON ~11 km** | Drying rate, and the freeze-thaw closures that are a different mode entirely |
+
+   **Three depths rather than one, because the lag between them is the closure.** Big Cedar through the July storms:
+
+   ```
+                     precip   et0     RH    sm 0-1cm   sm 3-9cm
+   2026-07-13 13:00   2.323   0.001   99%     0.492      0.286   first storm
+   2026-07-15 21:00   2.425   0.002   90%     0.496      0.411   second storm
+   2026-09-04 03:00   0.000   0.004   57%     0.168      0.226   seven weeks dry
+   ```
+
+   The surface saturates instantly and recovers fast; 3-9 cm lags badly on the first storm and only fills on the second. A trail whose surface has dried over a still-full subsoil ruts under a tyre, and a single-depth feature cannot see that difference.
+
    **Units are not per-variable, and this is the trap.** Open-Meteo applies `precipitation_unit` to **ET0** as well as rainfall, and `temperature_unit` to **soil temperature** as well as air temperature. So ET0 arrives in inches (~0.19 in/day, which reads like a broken number until you realise it is 4.75 mm/day) and soil temperature in Fahrenheit. Inches for ET0 is worth keeping — rainfall and ET0 in one unit makes the water balance a plain `precip_in - et0_in` subtraction — but changing either unit in `weather.js` silently rescales a stored column, so rename it in the same commit if that ever happens.
 
    **`forecast_snapshots` is the only table here that cannot be backfilled.** `past_days` returns the model's after-the-fact *analysis*, never the forecast that was actually available at the time, so backtesting "what would we have predicted on Tuesday" against the analysis grades the model with hindsight it never had and every score comes out flattering. One vintage per trail per day is captured; the guard is simply "is the newest snapshot under a day old".
