@@ -137,5 +137,24 @@ console.log("\n=== standing closures (Big Cedar: Sunday + Monday) ===");
     scheduledOverlap(plain, ts("2026-08-30T05:00:00Z"), ts("2026-08-30T17:59:00Z")), 0);
 }
 
+console.log("\n=== non-weather closures ===");
+{
+  const { knownNonWeather } = await import("../scripts/build-episodes.js");
+  const { TRAILS } = await import("../public/trails.js");
+  const mineola = TRAILS.find((t) => t.key === "mineola-nature-preserve");
+  const plain = TRAILS.find((t) => t.key === "northshore");
+  const ts = (iso) => Date.parse(iso) / 1000;
+
+  check("Mineola carries the concert closure", !!mineola.knownNonWeatherClosures?.length, true);
+  check("a closure on the recorded day is matched",
+    /Concert/.test(knownNonWeather(mineola, ts("2026-09-04T15:01:00Z")) || ""), true);
+  // to: null means "still going" — an open-ended closure must keep matching.
+  check("an open-ended closure still matches later",
+    /Concert/.test(knownNonWeather(mineola, ts("2026-09-06T12:00:00Z")) || ""), true);
+  check("a closure BEFORE the recorded window is not matched",
+    knownNonWeather(mineola, ts("2026-08-30T12:00:00Z")), null);
+  check("a trail with no record returns null", knownNonWeather(plain, ts("2026-09-04T15:01:00Z")), null);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
