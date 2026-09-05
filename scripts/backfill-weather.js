@@ -9,13 +9,29 @@
 //   node scripts/backfill-weather.js --dry-run          # fetch + report, write nothing
 //   node scripts/backfill-weather.js                    # write .sql files to dump/
 //   node scripts/backfill-weather.js --apply            # ...and run them against prod D1
-//   node scripts/backfill-weather.js --days 30 --apply  # a smaller bite (see below)
+//   node scripts/backfill-weather.js --days 20 --apply  # a safe bite (see below)
+//   node scripts/backfill-weather.js --days 92 --apply --force  # paid plans only
 //
-// WRITE BUDGET: 92 days x 24 hours x 58 trailheads is ~128,000 rows, which is
-// over D1's free-tier daily write allowance. That is why --days exists and why
-// every statement is INSERT OR REPLACE: run it in two or three passes on
-// consecutive days and the overlap costs nothing but a rewrite of rows that are
-// already correct.
+// WRITE BUDGET, enforced below rather than merely advised — because the advisory
+// version was written right here and then ignored. A full 92-day backfill is
+// ~129,000 rows, and D1's free tier allows 100,000 ROW WRITES PER DAY.
+//
+// The trap is that a row is not a write. weather_hourly is WITHOUT ROWID with a
+// composite primary key AND an index on hour_ts, so **every row costs about two
+// writes**. Sizing a chunk by row count alone understates the cost by half,
+// which is how 92 days became ~270,000 writes — 2.7x the daily limit — when this
+// was first run on 2026-09-04.
+//
+// Going over does not fail loudly, and it does not fail here. D1 starts refusing
+// writes ACCOUNT-WIDE until midnight UTC, so the Worker's own scheduled() writes
+// begin failing too; the status heartbeat has no retry, so every rejected run is
+// a permanent hole in scrape_runs. The weather archive survives only because
+// recordWeatherHour() re-derives its own catch-up window and retries.
+//
+// The Cloudflare dashboard will not show you this: those analytics count writes
+// through the Workers binding, while the quota also counts the REST-API writes
+// this script makes. The dashboard read 7k rows for the week while the quota was
+// already 2.7x blown. `wrangler d1 info` is the number that tells the truth.
 //
 // It writes SQL for `wrangler d1 execute` rather than calling the Cloudflare
 // REST API, deliberately. wrangler carries its own OAuth session, so this needs
@@ -49,6 +65,14 @@ const COLUMNS = [
 // row limits — a few large files beat hundreds of small ones.
 const ROWS_PER_FILE = 20000;
 const ROWS_PER_STATEMENT = 40;
+
+// D1 free tier. WRITES_PER_ROW is the index amplification described above; the
+// safety margin leaves room for the hourly cron, which needs ~3,200 writes a day
+// and must not be starved by a backfill that spent the budget to the last row.
+const FREE_TIER_DAILY_WRITES = 100000;
+const WRITES_PER_ROW = 2;
+const SAFETY = 0.8;
+const MAX_ROWS_PER_RUN = Math.floor((FREE_TIER_DAILY_WRITES * SAFETY) / WRITES_PER_ROW);
 
 function arg(name, fallback) {
   const i = process.argv.indexOf(name);
@@ -107,9 +131,23 @@ function toStatements(rows) {
   console.log(`  ${new Date(hours[0] * 1000).toISOString()} -> ${new Date(hours[hours.length - 1] * 1000).toISOString()}`);
   console.log(`  mean rainfall per trailhead over the window: ${totalRain.toFixed(2)} in`);
 
+  const writes = rows.length * WRITES_PER_ROW;
+  console.log(`  estimated D1 cost: ~${writes.toLocaleString()} row writes (${((writes / FREE_TIER_DAILY_WRITES) * 100).toFixed(0)}% of the free-tier daily limit)`);
+
   if (dryRun) {
     console.log("\n--dry-run: nothing written.");
     return;
+  }
+
+  // Refuse, do not warn. Exceeding the limit disables the Worker's own archive
+  // writes for the rest of the UTC day, so the damage lands hours later and far
+  // away from whoever ran this.
+  if (rows.length > MAX_ROWS_PER_RUN && !process.argv.includes("--force")) {
+    const safeDays = Math.floor(MAX_ROWS_PER_RUN / (TRAILS.length * 24));
+    console.error(`\nREFUSING: ${rows.length.toLocaleString()} rows is ~${writes.toLocaleString()} writes, over the ${MAX_ROWS_PER_RUN.toLocaleString()}-row ceiling for one day on D1's free tier.`);
+    console.error(`Run it in passes on consecutive days: --days ${safeDays}. INSERT OR REPLACE makes the overlap free.`);
+    console.error(`On a paid plan (50M writes/month) this ceiling does not apply — pass --force.`);
+    process.exit(1);
   }
 
   mkdirSync(OUT_DIR, { recursive: true });

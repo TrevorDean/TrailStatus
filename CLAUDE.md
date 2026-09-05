@@ -23,7 +23,10 @@ node scripts/check-manual-parking.js --update # deliberately accept new hand-cor
 npm run verify                               # run the verify/ harnesses (see below)
 npm run history -- --remote                  # read the status history archive (no UI by design)
 node scripts/backfill-weather.js --dry-run    # fetch 92 days of past weather and report — writes nothing
-node scripts/backfill-weather.js --days 30 --apply  # ...and load it into D1 (see the write budget note)
+node scripts/backfill-weather.js --days 20 --apply  # ...and load it into D1 (larger chunks are REFUSED — free-tier write limit)
+npx wrangler d1 info ntx-history                # rows_written_24h — the real quota number, NOT the dashboard
+npx wrangler tail ntx                           # live scheduled()/cron errors from production
+npx wrangler dev --remote --test-scheduled      # run the real Worker against the REAL bindings
 node scripts/build-episodes.js --remote       # derive the closure-episode training table (read-only)
 node scripts/build-episodes.js --remote --csv # ...as CSV, for plotting elsewhere
 node scripts/extract-soil.js                  # re-check soil against scripts/soil.lock.json (exit 1 on drift)
@@ -142,7 +145,16 @@ Five moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, 
 
    This is exactly why `shapeArchiveResponse()` preserves NULL instead of coercing to 0. Coercing would have written 38,686 hours of confident, fabricated *zero rainfall* into the training set, in a region where zero rainfall is the common case and would therefore have looked entirely plausible. The empty rows are left in place rather than deleted so a later ERA5 backfill can `INSERT OR REPLACE` straight over them.
 
-   To reach further back the ERA5 archive endpoint (`archive-api.open-meteo.com`, ~9-11 km, ~5-day lag, 1940 onward) is the option — but note it is a different model on a different grid, so it would put a seam in the features, and there is no status history before 2026-08-30 to join it to anyway. `scripts/backfill-weather.js` pulls 92 days (Open-Meteo's cap, asserted as `MAX_PAST_DAYS`) from the same endpoint and the same model as the live cron, so there is no seam. **Mind the write budget**: 92 days × 24 h × 58 trailheads is ~129,000 rows, over D1's free-tier daily write allowance. Every statement is `INSERT OR REPLACE`, so `--days 30` three times on consecutive days is safe and the overlap costs nothing.
+   To reach further back the ERA5 archive endpoint (`archive-api.open-meteo.com`, ~9-11 km, ~5-day lag, 1940 onward) is the option — but note it is a different model on a different grid, so it would put a seam in the features, and there is no status history before 2026-08-30 to join it to anyway. `scripts/backfill-weather.js` pulls 92 days (Open-Meteo's cap, asserted as `MAX_PAST_DAYS`) from the same endpoint and the same model as the live cron, so there is no seam. **The write budget is enforced by the script, and it bit once already** — see the incident below. `--days 20` is the safe bite; anything over ~28 days is refused unless you pass `--force`.
+
+   **The D1 free-tier write limit, and the outage it caused on 2026-09-04.** The free tier allows **100,000 row writes per day**, reset at **00:00 UTC**. The first full backfill spent ~270,000 and took the status archive down for 17 hours. Four things made it worse than it should have been, and all four are now guarded:
+
+   - **A row is not a write.** `weather_hourly` is `WITHOUT ROWID` with a composite primary key *and* `idx_weather_hour`, so every row costs about **two** writes. Sizing a chunk by row count understates it by half. `backfill-weather.js` now computes the real cost and **refuses** rather than warning.
+   - **The blast radius is the whole account, not the script.** Once over, D1 refuses writes account-wide until midnight UTC — so the *Worker's* `scheduled()` writes started failing hours later, far from whoever ran the backfill.
+   - **The two archives failed differently, and that is a design lesson.** `recordWeatherHour()` guards on `MAX(hour_ts)` and re-derives its catch-up window, so a rejected write is retried and every hour of 2026-09-04 is present. The status heartbeat is fire-and-forget — one row per run, no retry — so **every rejected run is a permanent hole in `scrape_runs`**. No `status_events` were lost only because no trail happened to change status. An idempotent writer survives a quota outage; a fire-and-forget one does not.
+   - **The Cloudflare dashboard will not show you this.** Its analytics count writes through the **Workers binding**; the quota also counts **REST-API** writes, which is what `wrangler d1 execute` makes. The dashboard read 7k rows for the week while the quota was 2.7× blown. **`wrangler d1 info` (`rows_written_24h`) is the number that tells the truth** — it read 272,278 and was correct.
+
+   Steady-state operation is nowhere near the limit: ~3,200 writes/day, about **3%**. Only backfills are dangerous. To diagnose a repeat, `npx wrangler tail ntx` shows the scheduled runs and the D1 error verbatim; `wrangler dev --remote --test-scheduled` reproduces the production path exactly, against the real bindings.
 
    **Two chunk sizes, two unrelated limits — do not copy one to the other.** `weather-history.js` binds parameters, and **D1 caps bound parameters per statement at 100**, not rows: 12 columns means 8 rows per INSERT, derived from `COLUMNS.length` rather than hardcoded so adding a column narrows it automatically. Hardcoding 40 there failed at runtime with "too many SQL variables" and was invisible until the cron actually ran. `backfill-weather.js` writes SQL *literals* to a file instead, so its limit is request size, not parameters.
 
