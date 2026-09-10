@@ -15,6 +15,7 @@
 
 import { execFileSync } from "node:child_process";
 import { TRAILS } from "../public/trails.js";
+import { classifyClosure, localDow, knownNonWeather, onScheduledDay } from "../closure-classify.js";
 
 const DB = "ntx-history";
 const HOUR = 3600;
@@ -46,24 +47,14 @@ function eventTime(row) {
   return Date.parse(row.observed_at) / 1000;
 }
 
-// Local weekday, America/Chicago. A standing closure is defined by the day a
-// human experiences, so UTC is the wrong frame: Big Cedar's Monday closure
-// starts around 9:40pm Sunday LOCAL, which is already Monday in UTC.
-const DOW = new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", weekday: "short" });
-const DAYS = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-
-export function localDow(ts) {
-  return DAYS[DOW.format(new Date(ts * 1000))];
-}
-
-// Some trails close on a fixed schedule regardless of weather — Big Cedar is
-// shut Sunday morning and all day Monday. Those episodes are REAL closures and
-// belong in the archive, but they are not drying events: a model fitted on them
-// learns that trails reopen on Tuesdays, which is true and useless.
+// Weekday, wetness thresholds, known-cause lookup and the whole at-closure-time
+// classification live in ../closure-classify.js, imported above. They are NOT
+// redefined here on purpose: a live predictor and this labeller must agree about
+// what counts as a weather closure, or the model is fitted on one definition and
+// used under another.
 //
-// This flags rather than filters. Dropping data is the modeller's call at fit
-// time, not this script's at derive time, and a mis-set schedule that silently
-// deleted rows would be far harder to notice than one that mislabels them.
+// scheduledOverlap() below stays local because it is the only test that needs
+// the REOPEN time, which a live classifier does not have.
 // A steward does not reopen at the stroke of midnight, so the closure spills
 // past its own schedule: Big Cedar's Monday closure ends at 1:00am TUESDAY,
 // and a strict "every hour is a scheduled day" test rejects it over that one
@@ -76,7 +67,9 @@ const REOPEN_GRACE = 6 * 3600;
 export function scheduledOverlap(trail, closedTs, openedTs) {
   const days = trail?.scheduledClosure?.days;
   if (!days?.length) return 0;
-  if (!days.includes(localDow(closedTs))) return 0;
+  // Same leading window as the classifier — see onScheduledDay(). A closure that
+  // starts the evening before a scheduled day is still that day's closure.
+  if (!onScheduledDay(trail, closedTs)) return 0;
   for (let t = closedTs; t < openedTs - REOPEN_GRACE; t += 3600) {
     if (!days.includes(localDow(t))) return 0;
   }
@@ -99,32 +92,6 @@ export function scheduledOverlap(trail, closedTs, openedTs) {
 // meaningful rain AND no rise in soil moisture. If rainfall says nothing but the
 // ground got wetter, that is a disagreement to investigate, not a closure to
 // throw away.
-const NO_RAIN_IN = 0.05;        // inches over the 72h before closing
-const NO_SOIL_RISE = 0.05;      // m³/m³ rise vs the week before
-
-// How much wetter the ground got in the run-up, versus its baseline a week out.
-function soilRise(rows, closedTs) {
-  const window = rows.filter((r) => r.hour_ts >= closedTs - 72 * HOUR && r.hour_ts <= closedTs)
-    .map((r) => r.soil_moist_0_1).filter((v) => v != null);
-  const baseline = rows.filter((r) => r.hour_ts >= closedTs - 10 * 24 * HOUR && r.hour_ts < closedTs - 72 * HOUR)
-    .map((r) => r.soil_moist_0_1).filter((v) => v != null);
-  if (!window.length || !baseline.length) return null;
-  return Math.max(...window) - (baseline.reduce((a, b) => a + b, 0) / baseline.length);
-}
-
-// Ground truth the weather can never supply. The automated test above did NOT
-// catch Mineola's 2026-09-04 closure: it was a concert, but ICON rain fell two
-// days earlier, so the soil DID get wetter and the episode reads as a genuine
-// drying event. Only a human knew otherwise. Hence this: a place to record a
-// cause that no column can show, keyed to the date the closure began.
-export function knownNonWeather(trail, closedTs) {
-  const list = trail?.knownNonWeatherClosures;
-  if (!list?.length) return null;
-  const day = new Date(closedTs * 1000).toISOString().slice(0, 10);
-  const hit = list.find((c) => day >= c.from && (c.to === null || day <= c.to));
-  return hit ? hit.reason : null;
-}
-
 function sum(rows, field, from, to) {
   return rows.reduce((acc, r) => (r.hour_ts >= from && r.hour_ts < to ? acc + (r[field] || 0) : acc), 0);
 }
@@ -170,8 +137,9 @@ const isMain = process.argv[1] && process.argv[1].endsWith("build-episodes.js");
         const openedTs = eventTime(e);
         const w = byTrailWeather[key] || [];
         const t = meta[key] || {};
-        const rain72 = sum(w, "precip_in", closedAt.ts - 72 * HOUR, closedAt.ts);
-        const rise = soilRise(w, closedAt.ts);
+        // Classified with ONLY what was knowable when it closed — openedTs is
+        // deliberately withheld, because a live predictor will not have it.
+        const cls = classifyClosure(t, closedAt.ts, w, openedTs);
         const known = knownNonWeather(t, closedAt.ts);
         episodes.push({
           trail_key: key,
@@ -184,23 +152,26 @@ const isMain = process.argv[1] && process.argv[1].endsWith("build-episodes.js");
           // Averaging it in with real ones biases every fit downward.
           start_known: closedAt.seeded ? 0 : 1,
           hours_closed: +((openedTs - closedAt.ts) / HOUR).toFixed(2),
-          rain_72h_before: +rain72.toFixed(3),
+          rain_72h_before: cls.rain_72h,
           rain_during: +sum(w, "precip_in", closedAt.ts, openedTs).toFixed(3),
           et0_during: +sum(w, "et0_in", closedAt.ts, openedTs).toFixed(3),
           soil_moist_at_open: w.find((x) => x.hour_ts >= openedTs - HOUR)?.soil_moist_0_1 ?? null,
           // 1 = every hour of this closure fell on a scheduled-closure day, so
           // the schedule alone explains it. Exclude these before fitting.
           scheduled: scheduledOverlap(t, closedAt.ts, openedTs),
-          soil_rise_before: rise === null ? null : +rise.toFixed(3),
-          // A recorded human cause always wins over the inferred flags below.
+          soil_rise_before: cls.soil_rise,
           known_cause: known,
-          // 1 = neither rainfall NOR soil moisture shows anything happened, so
-          // whatever closed this trail, it was not the weather. EXCLUDE these
-          // before fitting; they are closures, but not drying events.
-          no_weather_signal: known ? 1 : (rain72 < NO_RAIN_IN && rise !== null && rise < NO_SOIL_RISE) ? 1 : 0,
-          // 1 = the two models disagree about whether it rained. Not a verdict,
-          // a flag to go and look: one of the two columns is wrong.
-          model_disagreement: (rain72 < NO_RAIN_IN && rise !== null && rise >= NO_SOIL_RISE) ? 1 : 0,
+          // The classifier's verdict, and the gate on the whole exercise:
+          // "weather" | "scheduled" | "known-non-weather" | "stale" | "unexplained".
+          category: cls.category,
+          // Only these are drying events. Fit on nothing else.
+          usable: (cls.predictable && !scheduledOverlap(t, closedAt.ts, openedTs)) ? 1 : 0,
+          model_disagreement: cls.disputed ? 1 : 0,
+          // When the ground last got WET, not when the steward flipped the sign.
+          // If it rained again mid-closure the drying clock restarted, and this
+          // is the anchor a drying curve must actually be measured from.
+          wetted_at: cls.wetted_at ? new Date(cls.wetted_at * 1000).toISOString() : null,
+          hours_drying: cls.wetted_at ? +((openedTs - cls.wetted_at) / HOUR).toFixed(2) : null,
           month: new Date(openedTs * 1000).getUTCMonth() + 1,
           closed_dow_local: localDow(closedAt.ts),
           opened_dow_local: localDow(openedTs),
@@ -225,16 +196,17 @@ const isMain = process.argv[1] && process.argv[1].endsWith("build-episodes.js");
 
   console.log(`${events.length} status events, ${weather.length} weather hours`);
   const scheduled = episodes.filter((e) => e.scheduled).length;
-  const weatherless = episodes.filter((e) => e.no_weather_signal && !e.scheduled).length;
-  const knownCause = episodes.filter((e) => e.known_cause).length;
+  const byCategory = {};
+  for (const e of episodes) byCategory[e.category] = (byCategory[e.category] || 0) + 1;
   const disputed = episodes.filter((e) => e.model_disagreement).length;
-  const usable = episodes.filter((e) => !e.scheduled && !e.no_weather_signal).length;
+  const usable = episodes.filter((e) => e.usable).length;
   console.log(`${episodes.length} closure episode(s), ${episodes.filter((e) => e.start_known).length} with a known start`);
-  console.log(`  ${scheduled} on a standing schedule (exclude)`);
-  console.log(`  ${weatherless} with NO weather signal at all (exclude — something else closed it)`);
-  console.log(`  ${knownCause} with a RECORDED non-weather cause (exclude — a human told us why)`);
-  console.log(`  ${disputed} where rainfall and soil moisture DISAGREE (investigate before using)`);
-  console.log(`  ${usable} usable as drying events\n`);
+  for (const [cat, n] of Object.entries(byCategory).sort()) {
+    console.log(`  ${String(n).padStart(3)} ${cat}${cat === "weather" ? "" : "  (not predictable — no drying curve applies)"}`);
+  }
+  console.log(`  ${String(scheduled).padStart(3)} also match a standing schedule`);
+  console.log(`  ${String(disputed).padStart(3)} where rainfall and soil moisture DISAGREE (investigate)`);
+  console.log(`\n  ${usable} USABLE as drying events\n`);
   if (episodes.length === 0) {
     console.log("No completed closures yet — a trail must go closed AND reopen to make an episode.");
     return;
@@ -246,9 +218,10 @@ const isMain = process.argv[1] && process.argv[1].endsWith("build-episodes.js");
     opened: e.opened_at.slice(0, 16),
     hrs: e.hours_closed,
     known: e.start_known ? "y" : "n",
+    category: e.category,
     sched: e.scheduled ? "y" : "",
-    noWx: e.no_weather_signal ? "y" : "",
-    dispute: e.model_disagreement ? "y" : "",
+    usable: e.usable ? "y" : "",
+    dryHrs: e.hours_drying,
     "rain72h": e.rain_72h_before,
     "et0": e.et0_during
   })));

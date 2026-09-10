@@ -109,7 +109,8 @@ console.log("\n=== reported_at -> reported_ts ===");
 
 console.log("\n=== standing closures (Big Cedar: Sunday + Monday) ===");
 {
-  const { scheduledOverlap, localDow } = await import("../scripts/build-episodes.js");
+  const { scheduledOverlap } = await import("../scripts/build-episodes.js");
+  const { localDow } = await import("../closure-classify.js");
   const { TRAILS } = await import("../public/trails.js");
   const bigCedar = TRAILS.find((t) => t.key === "big-cedar");
   const plain = TRAILS.find((t) => t.key === "northshore");
@@ -139,7 +140,7 @@ console.log("\n=== standing closures (Big Cedar: Sunday + Monday) ===");
 
 console.log("\n=== non-weather closures ===");
 {
-  const { knownNonWeather } = await import("../scripts/build-episodes.js");
+  const { knownNonWeather } = await import("../closure-classify.js");
   const { TRAILS } = await import("../public/trails.js");
   const mineola = TRAILS.find((t) => t.key === "mineola-nature-preserve");
   const plain = TRAILS.find((t) => t.key === "northshore");
@@ -154,6 +155,54 @@ console.log("\n=== non-weather closures ===");
   check("a closure BEFORE the recorded window is not matched",
     knownNonWeather(mineola, ts("2026-08-30T12:00:00Z")), null);
   check("a trail with no record returns null", knownNonWeather(plain, ts("2026-09-04T15:01:00Z")), null);
+}
+
+console.log("\n=== closure classification (the gate on any prediction) ===");
+{
+  const { classifyClosure, onScheduledDay, STALE_CLOSURE_DAYS } = await import("../closure-classify.js");
+  const { TRAILS } = await import("../public/trails.js");
+  const ts = (iso) => Date.parse(iso) / 1000;
+  const bigCedar = TRAILS.find((t) => t.key === "big-cedar");
+  const mineola = TRAILS.find((t) => t.key === "mineola-nature-preserve");
+  const plain = TRAILS.find((t) => t.key === "northshore");
+
+  // Synthetic weather: a dry baseline, optionally a wet spell before `at`.
+  const hours = (at, { rain = 0, sm = 0.06 } = {}) => {
+    const rows = [];
+    for (let h = at - 10 * 24 * 3600; h <= at; h += 3600) {
+      const recent = h >= at - 72 * 3600;
+      rows.push({ hour_ts: h, precip_in: recent ? rain : 0, soil_moist_0_1: recent ? sm : 0.06 });
+    }
+    return rows;
+  };
+
+  const dry = ts("2026-09-09T18:00:00Z");
+  check("rain before closing => weather, predictable",
+    (({ category, predictable }) => [category, predictable])(classifyClosure(plain, dry, hours(dry, { rain: 0.02, sm: 0.30 }), dry)),
+    ["weather", true]);
+  check("nothing before closing => unexplained, NOT predictable",
+    (({ category, predictable }) => [category, predictable])(classifyClosure(plain, dry, hours(dry), dry)),
+    ["unexplained", false]);
+  check("a recorded cause outranks the weather",
+    classifyClosure(mineola, ts("2026-09-04T15:01:00Z"), hours(ts("2026-09-04T15:01:00Z"), { rain: 0.5, sm: 0.4 }), ts("2026-09-04T15:01:00Z")).category,
+    "known-non-weather");
+  const old = ts("2026-06-01T12:00:00Z");
+  check(`closed over ${STALE_CLOSURE_DAYS} days => stale, NOT predictable`,
+    classifyClosure(plain, old, hours(old, { rain: 0.5, sm: 0.4 }), dry).category, "stale");
+
+  // The regression that made a routine Sunday closure the only "usable" row.
+  const satNight = ts("2026-09-06T04:28:00Z");   // 11:28pm SATURDAY local
+  check("a Sunday closure starting Saturday night counts as scheduled",
+    onScheduledDay(bigCedar, satNight), true);
+  check("...and is therefore NOT predictable as a drying event",
+    classifyClosure(bigCedar, satNight, hours(satNight, { sm: 0.30 }), satNight).predictable, false);
+  // The lead window must not swallow an ordinary weekday closure.
+  const thu = ts("2026-09-10T18:00:00Z");
+  check("a Thursday closure is not caught by the lead window",
+    onScheduledDay(bigCedar, thu), false);
+  check("soil rose but rainfall disagrees => still weather, flagged disputed",
+    (({ category, disputed }) => [category, disputed])(classifyClosure(plain, dry, hours(dry, { rain: 0, sm: 0.30 }), dry)),
+    ["weather", true]);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
