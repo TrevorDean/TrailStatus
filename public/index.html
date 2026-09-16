@@ -14,7 +14,12 @@
         <h1>North Texas MTB Trail Status</h1>
         <button id="info-btn" class="info-btn" type="button" aria-label="About trail status">ⓘ Info</button>
         <button id="donate-btn" class="info-btn" type="button" aria-label="Donate">$ Donate</button>
-        <button id="alerts-btn" class="info-btn" type="button" aria-label="Email alerts when trails reopen">&#128276; Alerts</button>
+        <!-- Hidden until the Resend sending domain is verified and RESEND_API_KEY is
+             set in production. Everything behind it is deployed and working, but
+             without the key no confirmation email is sent, so a visible button
+             would collect signups and answer them with silence. Remove the
+             `hidden` attribute to launch; nothing else needs to change. -->
+        <button id="alerts-btn" class="info-btn" type="button" aria-label="Email alerts when trails reopen" hidden>&#128276; Alerts</button>
       </div>
     </header>
 
@@ -216,9 +221,14 @@
         </div>
         <p>These statuses reflect the trail system as a whole. Individual trails within a system may have their own statuses — check the Trailforks link for full details.</p>
 
+        <!-- Paired with the hidden #alerts-btn above: this section describes a
+             button nobody can see yet. Un-comment it in the same commit that
+             un-hides the button. -->
+        <!--
         <h3>Email Alerts</h3>
         <p>You can be emailed when a trail you follow goes from closed back to rideable &mdash; use the <strong>&#128276; Alerts</strong> button at the top of the page. You will get one confirmation email first, and nothing else until you click the link in it.</p>
         <p>We store only your email address and the trails you picked. It is never shared or sold, every alert carries a one-click unsubscribe, and you can have your address deleted any time by writing to <a href="mailto:ntxtrailstatus@gmail.com">ntxtrailstatus@gmail.com</a>. Trails on a fixed weekly closure schedule do not trigger alerts, since those reopenings are not news.</p>
+        -->
       </div>
     </div>
 
