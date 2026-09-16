@@ -8,6 +8,19 @@ enabled = true
 [assets]
 directory = "public"
 
+# Absolute origin for the links inside alert emails. Not inferred from the
+# request, because the cron send path has no request — and because a staging run
+# must never mail anyone a link into production.
+[vars]
+SITE_ORIGIN = "https://ntx.trailstatus.workers.dev"
+ALERTS_FROM = "North Texas MTB Trail Status <alerts@ntxtrailstatus.com>"
+
+# RESEND_API_KEY is a SECRET, not a var. Set it per environment:
+#   npx wrangler secret put RESEND_API_KEY
+#   npx wrangler secret put RESEND_API_KEY --env staging
+# Without it the alert paths no-op rather than failing, so a deploy that forgets
+# it is quiet rather than broken.
+
 [[kv_namespaces]]
 binding = "TRAIL_CACHE"
 id = "84a3ba80c5fd4563b0bdb87f852a1993"
@@ -31,6 +44,10 @@ enabled = true
 
 [env.staging.assets]
 directory = "public"
+
+[env.staging.vars]
+SITE_ORIGIN = "https://ntx-staging.trailstatus.workers.dev"
+ALERTS_FROM = "NTX Trail Status (staging) <alerts@ntxtrailstatus.com>"
 
 [[env.staging.kv_namespaces]]
 binding = "TRAIL_CACHE"

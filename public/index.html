@@ -14,6 +14,7 @@
         <h1>North Texas MTB Trail Status</h1>
         <button id="info-btn" class="info-btn" type="button" aria-label="About trail status">ⓘ Info</button>
         <button id="donate-btn" class="info-btn" type="button" aria-label="Donate">$ Donate</button>
+        <button id="alerts-btn" class="info-btn" type="button" aria-label="Email alerts when trails reopen">&#128276; Alerts</button>
       </div>
     </header>
 
@@ -163,6 +164,31 @@
       </div>
     </div>
 
+    <div id="alerts-modal" class="info-modal hidden" role="dialog" aria-modal="true" aria-labelledby="alerts-modal-title">
+      <div class="info-dialog">
+        <button class="info-close" id="alerts-close" type="button" aria-label="Close">&#10005;</button>
+        <h2 id="alerts-modal-title">Email Me When Trails Reopen</h2>
+        <p>Pick your trails and we will email you when one of them goes from closed back to rideable. No digest, no newsletter &mdash; one message per reopening.</p>
+
+        <form id="alerts-form" class="alerts-form">
+          <label class="alerts-label" for="alerts-email">Your email</label>
+          <input id="alerts-email" class="alerts-email" type="email" name="email" autocomplete="email" placeholder="you@example.com" required>
+
+          <div class="alerts-picked">
+            <span id="alerts-count" class="alerts-count">0 trails selected</span>
+            <button id="alerts-clear" class="alerts-clear" type="button">Clear</button>
+          </div>
+
+          <div id="alerts-trails" class="alerts-trails" role="group" aria-label="Choose trails"></div>
+
+          <button id="alerts-submit" class="info-donate-btn alerts-submit" type="submit">Send me a confirmation link</button>
+          <p id="alerts-status" class="alerts-status" role="status" aria-live="polite"></p>
+        </form>
+
+        <p class="alerts-privacy">We store your email address and the trails you picked, and nothing else. It is only ever used to send these alerts &mdash; never shared, never sold. Every email has a one-click unsubscribe, and you can have your address deleted any time by writing to <a href="mailto:ntxtrailstatus@gmail.com">ntxtrailstatus@gmail.com</a>.</p>
+      </div>
+    </div>
+
     <div id="info-modal" class="info-modal hidden" role="dialog" aria-modal="true" aria-labelledby="info-modal-title">
       <div class="info-dialog">
         <button class="info-close" id="info-close" type="button" aria-label="Close">✕</button>
@@ -189,6 +215,10 @@
           <p>Trail is closed and should not be ridden.</p>
         </div>
         <p>These statuses reflect the trail system as a whole. Individual trails within a system may have their own statuses — check the Trailforks link for full details.</p>
+
+        <h3>Email Alerts</h3>
+        <p>You can be emailed when a trail you follow goes from closed back to rideable &mdash; use the <strong>&#128276; Alerts</strong> button at the top of the page. You will get one confirmation email first, and nothing else until you click the link in it.</p>
+        <p>We store only your email address and the trails you picked. It is never shared or sold, every alert carries a one-click unsubscribe, and you can have your address deleted any time by writing to <a href="mailto:ntxtrailstatus@gmail.com">ntxtrailstatus@gmail.com</a>. Trails on a fixed weekly closure schedule do not trigger alerts, since those reopenings are not news.</p>
       </div>
     </div>
 

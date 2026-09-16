@@ -19,6 +19,7 @@ Object.assign(globalThis, {
 });
 
 const script = readFileSync("public/script.js", "utf8")
+  .replace('from "/status-buckets.js"', 'from "../public/status-buckets.js"')
   .replace('from "/trails.js"', 'from "../public/trails.js"')
   .replace('from "/trail-stats.js"', 'from "../public/trail-stats.js"');
 writeFileSync("verify/script-filter-test.mjs", script);

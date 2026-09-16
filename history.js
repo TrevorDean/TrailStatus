@@ -181,5 +181,8 @@ export async function recordStatusChanges(env, now = new Date()) {
   );
 
   await db.batch(statements);
-  return { observed, unusable, changes: events.length };
+  // The events themselves are returned, not just their count: the email alerts
+  // are a second consumer of exactly this list, and recomputing the diff in the
+  // send path would be a second definition of what a transition is.
+  return { observed, unusable, changes: events.length, events };
 }

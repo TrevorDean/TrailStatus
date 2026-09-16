@@ -25,6 +25,7 @@ Object.assign(globalThis, {
 });
 
 const script = readFileSync("public/script.js", "utf8")
+  .replace('from "/status-buckets.js"', 'from "../public/status-buckets.js"')
   .replace('from "/trails.js"', 'from "./trails-override.js"')
   .replace('from "/trail-stats.js"', 'from "../public/trail-stats.js"');
 writeFileSync("verify/script-ovr-test.mjs", script);

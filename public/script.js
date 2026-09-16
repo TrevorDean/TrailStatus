@@ -1,3 +1,4 @@
+import { statusBucket, isClosedStatus, isRideableStatus } from "/status-buckets.js";
 import { TRAILS as trails } from "/trails.js";
 import { TRAIL_STATS } from "/trail-stats.js";
 
@@ -188,11 +189,11 @@ function getVisibleTrails() {
     const matchesCity = activeFilters.size === 0 || activeFilters.has(trail.city);
     const cityForSearch = statuses[trail.key]?.city || trail.city;
     const matchesSearch = `${cityForSearch} ${trail.name} ${trail.statusArea}`.toLowerCase().includes(search);
-    const status = (statuses[trail.key]?.status || "").toLowerCase();
+    const status = statuses[trail.key]?.status || "";
     const matchesStatus =
       activeStatusFilter === "all" ||
-      (activeStatusFilter === "rideable" && (status.includes("open") || status.includes("caution") || status.includes("ideal") || status.includes("dry") || status.includes("variable"))) ||
-      (activeStatusFilter === "closed" && (status.includes("closed") || status.includes("wet") || status.includes("mud")));
+      (activeStatusFilter === "rideable" && isRideableStatus(status)) ||
+      (activeStatusFilter === "closed" && isClosedStatus(status));
     // Uses the same label the column shows, so a manual override filters as it
     // reads. Trailheads with neither an override nor data show only under "All".
     const difficulty = difficultyLabel(trail);
@@ -571,21 +572,10 @@ function formatUpdated(updated) {
   return updated;
 }
 
+// The buckets themselves live in status-buckets.js so the archive tooling and
+// the reopening alerts cannot draw this line differently than the page does.
 function statusClassFor(status) {
-  const normalized = status.toLowerCase();
-  if (normalized.includes("closed") || normalized.includes("wet") || normalized.includes("mud")) {
-    return "status-closed";
-  }
-  if (normalized.includes("caution") || normalized.includes("variable")) {
-    return "status-caution";
-  }
-  if (normalized.includes("open") || normalized.includes("ideal") || normalized.includes("dry")) {
-    return "status-open";
-  }
-  if (normalized.includes("manual") || normalized.includes("unavailable")) {
-    return "status-manual";
-  }
-  return "status-unknown";
+  return `status-${statusBucket(status)}`;
 }
 
 // ---- Map view (Leaflet) ----
@@ -871,4 +861,100 @@ donateBtn.addEventListener('click', () => donateModal.classList.remove('hidden')
 donateClose.addEventListener('click', () => donateModal.classList.add('hidden'));
 donateModal.addEventListener('click', e => { if (e.target === donateModal) donateModal.classList.add('hidden'); });
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { infoModal.classList.add('hidden'); donateModal.classList.add('hidden'); } });
+const alertsBtn = document.getElementById('alerts-btn');
+const alertsModal = document.getElementById('alerts-modal');
+const alertsClose = document.getElementById('alerts-close');
+const alertsTrailsEl = document.getElementById('alerts-trails');
+const alertsFormEl = document.getElementById('alerts-form');
+const alertsEmailEl = document.getElementById('alerts-email');
+const alertsCountEl = document.getElementById('alerts-count');
+const alertsClearEl = document.getElementById('alerts-clear');
+const alertsStatusEl = document.getElementById('alerts-status');
+
+// Grouped by the same sections the list view uses, so the picker reads in the
+// order someone already knows the trails in.
+function alertsTrailsHtml() {
+  const sections = [...SECTION_ORDER, ...new Set(trails.map((t) => t.city))]
+    .filter((city, i, all) => all.indexOf(city) === i);
+  return sections
+    .map((city) => {
+      const inCity = trails.filter((t) => t.city === city);
+      if (inCity.length === 0) return "";
+      const rows = inCity
+        .map(
+          (trail) =>
+            `<label class="alerts-trail"><input type="checkbox" value="${trail.key}"` +
+            `${favoritedTrails.has(trail.key) ? " checked" : ""}> ${trail.name}</label>`
+        )
+        .join("");
+      return `<div class="alerts-group"><h3>${SECTION_DISPLAY[city] || city}</h3>${rows}</div>`;
+    })
+    .join("");
+}
+
+function alertsChecked() {
+  return [...alertsTrailsEl.querySelectorAll("input:checked")].map((el) => el.value);
+}
+
+function syncAlertsCount() {
+  const n = alertsChecked().length;
+  alertsCountEl.textContent = `${n} trail${n === 1 ? "" : "s"} selected`;
+}
+
+// Built on open rather than at load, so the checkboxes reflect whatever is
+// favourited right now. Favourites are the closest thing the site already has to
+// "trails I care about", so they seed the picker and make the common case one
+// click; unticking is cheaper than hunting for four trails in a list of 58.
+function openAlerts() {
+  alertsTrailsEl.innerHTML = alertsTrailsHtml();
+  alertsStatusEl.textContent = "";
+  alertsStatusEl.className = "alerts-status";
+  syncAlertsCount();
+  alertsModal.classList.remove("hidden");
+}
+
+alertsBtn.addEventListener('click', openAlerts);
+alertsClose.addEventListener('click', () => alertsModal.classList.add('hidden'));
+alertsModal.addEventListener('click', e => { if (e.target === alertsModal) alertsModal.classList.add('hidden'); });
+alertsTrailsEl.addEventListener('change', syncAlertsCount);
+alertsClearEl.addEventListener('click', () => {
+  alertsTrailsEl.querySelectorAll("input:checked").forEach((el) => { el.checked = false; });
+  syncAlertsCount();
+});
+
+alertsFormEl.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const trailKeys = alertsChecked();
+  if (trailKeys.length === 0) {
+    alertsStatusEl.textContent = "Pick at least one trail first.";
+    alertsStatusEl.className = "alerts-status alerts-error";
+    return;
+  }
+
+  const submit = document.getElementById('alerts-submit');
+  submit.disabled = true;
+  alertsStatusEl.textContent = "Sending...";
+  alertsStatusEl.className = "alerts-status";
+  try {
+    const response = await fetch("/api/alerts/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: alertsEmailEl.value, trails: trailKeys })
+    });
+    if (!response.ok) throw new Error(`subscribe failed with ${response.status}`);
+    // Deliberately not "you're subscribed" — nothing is subscribed until the
+    // link is clicked, and saying otherwise is how people conclude the alerts
+    // are broken when the confirmation is sitting unread.
+    alertsStatusEl.textContent = "Check your email for a confirmation link. Alerts start once you click it.";
+    alertsStatusEl.className = "alerts-status alerts-ok";
+    alertsFormEl.reset();
+    syncAlertsCount();
+  } catch (error) {
+    alertsStatusEl.textContent = "That did not go through. Try again in a moment.";
+    alertsStatusEl.className = "alerts-status alerts-error";
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { infoModal.classList.add('hidden'); donateModal.classList.add('hidden'); alertsModal.classList.add('hidden'); } });

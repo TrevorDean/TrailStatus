@@ -2,6 +2,14 @@ import { allSources } from "./public/trails.js";
 import { fetchWeather, futureHourCount, DISPLAY_HOURS } from "./public/weather.js";
 import { recordStatusChanges } from "./history.js";
 import { recordWeatherHour } from "./weather-history.js";
+import {
+  handleConfirm,
+  handleManage,
+  handleSubscribe,
+  handleUnsubscribe,
+  retryFailedAlerts,
+  sendReopenAlerts
+} from "./alerts-store.js";
 
 // Cold-start scrape list (used only when KV is empty). Canonical data lives in public/trails.js.
 const sources = allSources();
@@ -28,6 +36,21 @@ export default {
     if (url.pathname === "/api/weather") {
       return handleWeather(env);
     }
+    // The alert routes are the first here that need the request itself — a body,
+    // a query string, and a method. The two above deliberately still take only
+    // env, because neither varies by anything the caller sends.
+    if (url.pathname === "/api/alerts/subscribe") {
+      return handleSubscribe(request, env);
+    }
+    if (url.pathname === "/api/alerts/confirm") {
+      return handleConfirm(request, env);
+    }
+    if (url.pathname === "/api/alerts/manage") {
+      return handleManage(request, env);
+    }
+    if (url.pathname === "/api/alerts/unsubscribe") {
+      return handleUnsubscribe(request, env);
+    }
     return env.ASSETS.fetch(request);
   },
 
@@ -41,8 +64,24 @@ export default {
   // the load-bearing one; an Open-Meteo outage must never be able to cost us a
   // transition, and a transition recorded is not worth losing to a weather 503.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(recordStatusChanges(env).catch((error) => {
-      console.error(`status archive failed: ${error.message}`);
+    // The alerts hang off the status archive rather than running beside it, and
+    // deliberately AFTER its batch has committed. The archive is the load-bearing
+    // half: a transition lost to a mail failure is gone for good, while a mail
+    // lost to a D1 failure is retried on the next tick. Their errors stay
+    // separate for the same reason the two archives' do.
+    ctx.waitUntil(
+      recordStatusChanges(env)
+        .then((result) =>
+          sendReopenAlerts(env, result?.events || []).catch((error) => {
+            console.error(`reopen alerts failed: ${error.message}`);
+          })
+        )
+        .catch((error) => {
+          console.error(`status archive failed: ${error.message}`);
+        })
+    );
+    ctx.waitUntil(retryFailedAlerts(env).catch((error) => {
+      console.error(`alert retry failed: ${error.message}`);
     }));
     ctx.waitUntil(recordWeatherHour(env).catch((error) => {
       console.error(`weather archive failed: ${error.message}`);

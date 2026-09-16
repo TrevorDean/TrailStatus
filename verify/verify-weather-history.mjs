@@ -128,6 +128,17 @@ console.log("\n=== standing closures (Big Cedar: Sunday + Monday) ===");
   check("Monday closure reopening after midnight is flagged",
     scheduledOverlap(bigCedar, ts("2026-08-31T02:38:00Z"), ts("2026-09-01T05:58:00Z")), 1);
 
+  // The lead-in. Both episodes above START on a day that is itself scheduled, so
+  // neither exercised the case the comment on scheduledOverlap() describes: Big
+  // Cedar's SUNDAY closure was observed beginning 11:28pm SATURDAY, and the
+  // hour-by-hour scan used to begin at that Saturday hour and bail immediately.
+  check("a Saturday-evening start of the Sunday closure is flagged",
+    scheduledOverlap(bigCedar, ts("2026-09-13T04:28:00Z"), ts("2026-09-13T18:00:00Z")), 1);
+  // The grace is one-sided and small: it reaches back across an evening, not
+  // across an afternoon, so a Saturday-afternoon closure is still a real one.
+  check("a Saturday AFTERNOON start is not",
+    scheduledOverlap(bigCedar, ts("2026-09-12T19:00:00Z"), ts("2026-09-13T18:00:00Z")), 0);
+
   // A closure that starts on a scheduled day but runs deep into the week is a
   // weather closure wearing a Sunday hat, and must NOT be written off.
   check("Sunday -> Thursday is NOT written off as scheduled",

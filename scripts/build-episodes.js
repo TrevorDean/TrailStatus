@@ -15,21 +15,25 @@
 
 import { execFileSync } from "node:child_process";
 import { TRAILS } from "../public/trails.js";
-import { classifyClosure, localDow, knownNonWeather, onScheduledDay } from "../closure-classify.js";
+import { isClosedStatus } from "../public/status-buckets.js";
+import {
+  classifyClosure,
+  localDow,
+  knownNonWeather,
+  onScheduledDay,
+  scheduledOverlap,
+  REOPEN_GRACE
+} from "../closure-classify.js";
+
+// Re-exported because both definitions moved out from under this file — the
+// reopening alerts in the Worker need them and cannot import a module that pulls
+// in node:child_process. verify/verify-weather-history.mjs imports
+// scheduledOverlap from here, and the point of the move was to stop these
+// definitions existing twice, not to relocate the second copy.
+export { isClosedStatus, scheduledOverlap, REOPEN_GRACE };
 
 const DB = "ntx-history";
 const HOUR = 3600;
-
-// Mirrors statusClassFor() in public/script.js: Wet and Prevalent Mud sit in the
-// same bucket as Closed, because all three mean "do not ride". That is a
-// MODELLING CHOICE, not a fact about the data — status_events stores every
-// status verbatim precisely so this line can be redrawn later without a
-// re-scrape. If it changes here, change it there too or the site and the model
-// will disagree about what a closure is.
-export function isClosedStatus(status) {
-  const s = String(status || "").toLowerCase();
-  return s.includes("closed") || s.includes("wet") || s.includes("mud");
-}
 
 function query(sql, remote) {
   const args = ["wrangler", "d1", "execute", DB, "--json", `--command=${sql}`];
@@ -52,30 +56,6 @@ function eventTime(row) {
 // redefined here on purpose: a live predictor and this labeller must agree about
 // what counts as a weather closure, or the model is fitted on one definition and
 // used under another.
-//
-// scheduledOverlap() below stays local because it is the only test that needs
-// the REOPEN time, which a live classifier does not have.
-// A steward does not reopen at the stroke of midnight, so the closure spills
-// past its own schedule: Big Cedar's Monday closure ends at 1:00am TUESDAY,
-// and a strict "every hour is a scheduled day" test rejects it over that one
-// hour. The trailing grace absorbs that overhang. It is deliberately one-sided
-// — the closure must still START on a scheduled day — so a genuine weather
-// closure that happens to begin on a Sunday and run to Thursday is not
-// swallowed by it.
-const REOPEN_GRACE = 6 * 3600;
-
-export function scheduledOverlap(trail, closedTs, openedTs) {
-  const days = trail?.scheduledClosure?.days;
-  if (!days?.length) return 0;
-  // Same leading window as the classifier — see onScheduledDay(). A closure that
-  // starts the evening before a scheduled day is still that day's closure.
-  if (!onScheduledDay(trail, closedTs)) return 0;
-  for (let t = closedTs; t < openedTs - REOPEN_GRACE; t += 3600) {
-    if (!days.includes(localDow(t))) return 0;
-  }
-  return 1;
-}
-
 // A closure with no weather behind it did not happen for weather reasons, and
 // must not teach the model that trails close out of a clear sky. Mineola was
 // shut on 2026-09-04 for a CONCERT; Big Cedar shuts on a schedule. Neither is a

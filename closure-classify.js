@@ -150,3 +150,47 @@ export function classifyClosure(trail, closedTs, weatherRows = [], now = Date.no
       : "rain and/or soil moisture rose before closing"
   };
 }
+
+// A steward does not reopen at the stroke of midnight, so a scheduled closure
+// spills past its own schedule: Big Cedar's Monday closure ends at 1:00am
+// TUESDAY, and a strict "every hour is a scheduled day" test rejects it over
+// that one hour. The trailing grace absorbs that overhang. It is deliberately
+// one-sided — the closure must still START on a scheduled day — so a genuine
+// weather closure that happens to begin on a Sunday and run to Thursday is not
+// swallowed by it.
+export const REOPEN_GRACE = 6 * 3600;
+
+// Was this whole closure explained by the standing schedule?
+//
+// Unlike everything above it, this needs the REOPEN time, so it cannot run at
+// closure time. It moved here from scripts/build-episodes.js when the reopening
+// alerts needed it: that module imports node:child_process and can never be
+// pulled into the Worker bundle, and a second copy is exactly the drift this
+// file exists to prevent. build-episodes.js re-exports it for its own callers.
+//
+// This is the test that decides whether a reopening is worth an email. Big Cedar
+// reopens on a schedule twice a week; mailing people about it would teach them
+// that these alerts are noise.
+export function scheduledOverlap(trail, closedTs, openedTs) {
+  const days = trail?.scheduledClosure?.days;
+  if (!days?.length) return 0;
+  // Same leading window as the classifier — see onScheduledDay(). A closure that
+  // starts the evening before a scheduled day is still that day's closure.
+  if (!onScheduledDay(trail, closedTs)) return 0;
+
+  // ...and the hour-by-hour scan has to honour that, which it did not until the
+  // alerts needed it. onScheduledDay() accepted Big Cedar's real Saturday 11:28pm
+  // start of the SUNDAY closure, and then the loop below began at that same
+  // Saturday hour, found a weekday not in the schedule, and returned 0 — so the
+  // function contradicted the comment directly above it. Skip forward over the
+  // lead-in, bounded by the same one-sided LEAD_GRACE_H, so an evening start is
+  // measured from the scheduled day it belongs to.
+  let start = closedTs;
+  const leadLimit = closedTs + LEAD_GRACE_H * 3600;
+  while (start < leadLimit && !days.includes(localDow(start))) start += 3600;
+
+  for (let t = start; t < openedTs - REOPEN_GRACE; t += 3600) {
+    if (!days.includes(localDow(t))) return 0;
+  }
+  return 1;
+}

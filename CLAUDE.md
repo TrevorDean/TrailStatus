@@ -28,6 +28,10 @@ npx wrangler d1 info ntx-history                # rows_written_24h — the real 
 npx wrangler tail ntx                           # live scheduled()/cron errors from production
 npx wrangler dev --remote --test-scheduled      # run the real Worker against the REAL bindings
 node scripts/build-episodes.js --remote       # derive the closure-episode training table (read-only)
+npx wrangler secret put RESEND_API_KEY          # the alert sender's key (production)
+npx wrangler secret put RESEND_API_KEY --env staging   # ...and staging; separate secret stores
+CI=true npx wrangler d1 migrations apply ntx-history --remote           # apply migrations (CI=true is LOAD-BEARING)
+CI=true npx wrangler d1 migrations apply TRAIL_HISTORY --env staging --remote  # staging is addressed by BINDING name
 node scripts/build-episodes.js --remote --csv # ...as CSV, for plotting elsewhere
 node scripts/extract-soil.js                  # re-check soil against scripts/soil.lock.json (exit 1 on drift)
 node scripts/extract-soil.js --write          # look up soil and splice it into trails.js (one-time)
@@ -190,6 +194,36 @@ Five moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, 
 
    **Expect the model to be a year away, and expect the first surprise to be a data-quality one.** As of 2026-09-04 the archive holds 2 completed episodes, both Big Cedar, **both with zero rain in the preceding 72 hours, and both explained by the standing schedule above** — the archive currently contains *no* weather closures at all. Trail work, races and park events close trails too, and if those land in the training set the model learns that rain sometimes does not matter. Budget for hand-labelling the first season. The other constraint is statistical: every trail in a region sees the same storm, so 58 trails × 20 storms is **not** 1,160 samples — the effective count is nearer 20–30 independent events per year, which rules out machine learning and argues for a few-parameter physical model pooled across trails.
 
+## Email alerts (the only personal data here)
+
+Visitors give an email address, tick trails, and get one message when a chosen trail flips from closed to rideable. `alerts.js` holds the decisions (pure, no D1, no network), `alerts-store.js` the D1 writes, the Resend call and the four HTTP handlers, and `public/index.html` + `public/script.js` the panel behind the header's **🔔 Alerts** button.
+
+**The detection half already existed, and was not rebuilt.** `recordStatusChanges()` computes exactly these transitions every 5 minutes; it used to return only a count. It now returns `events` too, and `scheduled()` chains `sendReopenAlerts()` onto it — **after** the archive batch commits, and inside its own `.catch()`. The archive is the load-bearing half: a transition lost to a mail failure is gone forever, while a mail lost to a D1 failure is retried next tick. Recomputing the diff in the send path would have been a second definition of what a transition is.
+
+**The stakes are asymmetric, and every guard leans one way.** A missed alert costs someone one ride; a wrong one is in a stranger's inbox permanently. So: `prev_status === null` (a trail's first-ever sighting) never sends; `isRealStatus()` in `history.js` already drops `Unknown`/`Unavailable`, which is what stops a transient Trailforks 403 reading as "all 58 trails just opened"; and an unconfirmed address is filtered in the SQL *and* again in `selectRecipients()`.
+
+**Double opt-in is not optional, because anyone can type someone else's address.** A row exists the moment the form is submitted, but `confirmed_at IS NULL` means nothing may ever be sent to it. The anti-bombing guard is `SIGNUP_COOLDOWN_MIN` (15 min) on `last_signup_at`: repeat submissions still update the trail list, so a real person editing their choices is never blocked — what is rate limited is the outbound mail. `MAX_SIGNUPS_PER_DAY` (500) is a circuit breaker on top, because D1's write quota is **account-wide** and a signup flood would take the status archive down with it.
+
+**Unsubscribe must never act on a GET.** Mail clients and corporate link scanners fetch every URL in a message; a GET that deleted would silently unsubscribe people who never clicked. The link in an email points at `/api/alerts/manage`, which renders a button that POSTs. Every alert also carries RFC 8058 `List-Unsubscribe` + `List-Unsubscribe-Post` headers — Gmail and Yahoo require them on bulk mail, and the spec makes them a POST, which is exactly what makes them safe. Unsubscribing **deletes** the rows rather than flagging them: someone who asked to be gone should not have their address kept.
+
+**Sends are claimed before they are sent.** `alert_sends` takes an `INSERT OR IGNORE` row keyed `(email, trail_key, event_at)` — `event_at` is the transition's `observed_at`, not the send time, which is what makes it stable across retries — and only rows whose `meta.changes === 1` are actually mailed. A cron retry, a status that flaps closed/open/closed, and two overlapping invocations all collapse onto one email. `scrape_runs` has permanent holes because its writer had no equivalent; here the failure would be visible to a stranger rather than to a query. The retry sweep is bounded twice: `MAX_SEND_ATTEMPTS` (3) and `SEND_STALE_H` (6), the latter because a trail that opened six hours ago may be shut again and mailing about it is worse than silence.
+
+**Scheduled reopenings are suppressed.** Big Cedar reopens on its steward's calendar twice a week; mailing people about that would teach them these alerts are noise. `scheduledOverlap()` is the test, and the caller reads the closure's start time from `status_events` to use it. When that lookup finds nothing (a closure older than the archive), the answer is "not explained" and the mail **goes out** — unexplained-therefore-send is the right bias.
+
+**Secrets and config.** `RESEND_API_KEY` is a Wrangler secret, per environment (`npx wrangler secret put RESEND_API_KEY`, and again with `--env staging`); it is the project's first Worker secret. Without it the alert paths no-op rather than failing, so a deploy that forgets it is quiet rather than broken. `SITE_ORIGIN` and `ALERTS_FROM` are `[vars]` in `wrangler.toml` — the origin is configured, never inferred, because the cron send path has no request to derive one from and a staging run must never mail anyone a link into production. Sending needs a verified domain in Resend plus SPF/DKIM/DMARC records; that is dashboard-and-DNS work and it gates the first real send. **Deliverability is the risk most likely to bite**, and it fails silently — no bounce, no error, just nobody getting alerts.
+
+**Privacy.** The site stores an email address and a list of trail keys, nothing else. That is stated on the panel itself and in the Info modal, along with one-click unsubscribe and deletion by writing to `ntxtrailstatus@gmail.com`. Keep it that way: any new column here is personal data.
+
+### One definition of "closed", finally
+
+`public/status-buckets.js` is now the single source for the open/closed/caution line, exporting `statusBucket()`, `isClosedStatus()` and `isRideableStatus()`. It replaced **four** copies: `statusClassFor()` and the inline filter in `getVisibleTrails()` (both `public/script.js`), `isClosedStatus()` in `scripts/build-episodes.js`, and the fifth the alerts would have added. It lives in `public/` because the browser needs it too, like `trails.js` and `weather.js`.
+
+This is still a **modelling choice, not a fact about the data** — `status_events` stores every status verbatim so the line can be redrawn — but it is now redrawn in one place. `verify/verify-status-buckets.mjs` pins the pre-refactor behaviour by transcribing all three originals and comparing against them for every string the scrapers can emit; that harness is what stops a "cleanup" from quietly changing which trails the Closed filter shows.
+
+`scheduledOverlap()` and `REOPEN_GRACE` moved from `scripts/build-episodes.js` to `closure-classify.js` for the same reason — the Worker cannot import a module that pulls in `node:child_process`. `build-episodes.js` re-exports both (plus `isClosedStatus`) so existing callers, including `verify/verify-weather-history.mjs`, keep working.
+
+**A bug surfaced in that move.** `scheduledOverlap()`'s comment claimed "a closure that starts the evening before a scheduled day is still that day's closure", and `onScheduledDay()` accepted such a start — but the hour-by-hour scan then began at that same evening hour, found a weekday outside the schedule, and returned 0. Big Cedar's real Saturday 11:28pm start of the **Sunday** closure was therefore never flagged as scheduled. The scan now skips the lead-in, bounded by the same one-sided `LEAD_GRACE_H`. **This changes training labels**: evening-start scheduled closures that were previously labelled `scheduled: 0` are now `1`, which is what the definition always said they should be. The two episodes already in the archive are unaffected — both start on a day that is itself scheduled — but re-derive `episodes.csv` before fitting anything.
+
 ### Deployment (Worker, not Pages)
 
 The live site is the Cloudflare **Worker** `ntx` (`wrangler.toml`: `main = worker.js`, `public/` as assets, plus an `ntx-staging` env), deployed with `npx wrangler deploy`. (There used to be a `public/.assetsignore` excluding `_worker.js` from the asset upload; both are gone.)
@@ -304,7 +338,7 @@ All in `public/script.js` + `public/index.html`, no framework:
 - **Filters** — region (`[data-filter]`), status (`[data-status-filter]`: All / Open+Caution / Closed), Avg Difficulty (`[data-difficulty]`: All / Beginner / Intermediate / Expert), and a free-text search over trail and city names. `getVisibleTrails()` applies all four, and both views render from it.
 - **Persistence** — the four filters *and the view* round-trip through `localStorage` under `ntxmtb-filters`, restored by `restoreFilters()` before the first render. Restored values are validated against the controls that still exist, so a renamed region or retired band can't strand someone on an empty list; a corrupt entry falls back to defaults rather than throwing during module init. Saving happens in the click handlers, **not** in `setView()`, so a visit with no interaction writes nothing.
 - **Default view** — `DEFAULT_VIEW` is `"map"`, but it is the **first-visit** default only; a saved view wins. `index.html`'s initial markup (active button, `hidden` classes) must match `DEFAULT_VIEW` or first-time visitors get a flash of the wrong view.
-- **Info and Donate modals**, closed by backdrop click or Escape.
+- **Info, Donate and Alerts modals**, closed by backdrop click or Escape. All three are listed by name in the one shared `keydown` handler at the bottom of `script.js` — a fourth must be added there too. The **Alerts** panel (🔔 in the header) is a modal specifically so it stays off the list-view grid; its 58 checkboxes are built on open, not at load, and seed themselves from `ntxmtb-favorites`. See the Email alerts section above.
 
 ### The list-view grid has a footgun
 
@@ -374,6 +408,10 @@ things about it that are easy to break:
 - The button is derived from `statsTipHtml()`'s return value, so a trailhead with no stats offers no toggle.
 - Open state lives in the `openStats` Set, **not** in the DOM: a favourite toggle calls `render()` and rebuilds every row, which would otherwise wipe it.
 - A favourited trail **renders twice** (Favorites block *and* its city section), so the handler updates every `.trail-row[data-key=…]`. This is also why there is no `aria-controls` — the id would be duplicated.
+
+**Alerts are covered by two harnesses.** `verify/verify-alerts.mjs` is a pure-function harness (pattern b, exits non-zero) over `isReopening()`, `isScheduledReopening()`, `validateSubscription()`, `isValidEmail()`, `newToken()` and `selectRecipients()` — most of its assertions check that something is **not** sent, which is the direction that matters. `verify/verify-alerts-ui.mjs` drives the real panel under jsdom and pins the exact JSON body the browser posts, because a frontend that posts a slightly different shape fails silently: the signup 400s and nobody finds out.
+
+**Any new top-level import in `public/script.js` must be added to the `.replace()` specifier-rewrite chain in every jsdom harness**, or all of them break at once. Adding `status-buckets.js` meant touching nine files for this reason.
 
 ## Maintenance tooling (GitHub Actions only)
 
