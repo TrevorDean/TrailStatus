@@ -26,6 +26,7 @@ node scripts/backfill-weather.js --dry-run    # fetch 92 days of past weather an
 node scripts/backfill-weather.js --days 20 --apply  # ...and load it into D1 (larger chunks are REFUSED — free-tier write limit)
 npx wrangler d1 info ntx-history                # rows_written_24h — the real quota number, NOT the dashboard
 npx wrangler tail ntx                           # live scheduled()/cron errors from production
+npx wrangler d1 execute ntx-history --remote --command "SELECT source, COUNT(*)/58 AS hours, datetime(MAX(hour_ts),'unixepoch') FROM rain_hourly GROUP BY source"  # rain archive: radar hours vs NBM fills
 npx wrangler dev --remote --test-scheduled      # run the real Worker against the REAL bindings
 node scripts/build-episodes.js --remote       # derive the closure-episode training table (read-only)
 npx wrangler secret put RESEND_API_KEY          # the alert sender's key (production)
@@ -57,7 +58,37 @@ That token is only needed for the **scraper's KV writes**. `wrangler` itself is 
 
 ## Architecture
 
-Five moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, id `84a3ba80...`):
+Six moving parts, connected by Cloudflare KV and D1 (namespace binding `TRAIL_CACHE`, id `84a3ba80...`):
+
+### Weather data sources at a glance
+
+Every weather number on this project, where it comes from, and how fresh it is. Details are in items 3, 5 and 6 below.
+
+| What | Source | Grid | Updates | Where it lands |
+| --- | --- | --- | --- | --- |
+| **Rain received** (the rain of record) | **NOAA MRMS** radar QPE, `conus_QPE_01H`, via the NWS image service | 1 km | hourly, ~4 min after the hour; **only the newest hour is ever available** | `rain_hourly`, `source = 'mrms'` |
+| Rain received, **backup** for any missed MRMS hour | **Open-Meteo NBM** (`models=ncep_nbm_conus`) | ~2.5 km | hourly; 46 h of past hours reachable | `rain_hourly`, `source = 'nbm'` |
+| **Chance of rain**, next 8 h (the Rain 8h column) | Open-Meteo `best_match` → `precipitation_probability`, which is **NBM's** probability | ~2.5 km | cron hourly (see item 3) | KV `trail_weather` |
+| Forecast vintages for backtesting | Open-Meteo `best_match` (HRRR rain/temp/ET0) | ~3 km | one snapshot a day | `forecast_snapshots` |
+| Temperature, ET0, humidity, wind, radiation | Open-Meteo `best_match` → **HRRR** | ~3 km | written once per hour, never revised | `weather_hourly` |
+| Soil moisture (3 depths), soil temperature | Open-Meteo `best_match` → **ICON** (HRRR has no soil data) | ~11 km | written once per hour, never revised | `weather_hourly` |
+| Model rain (**no longer the rain of record**) | Open-Meteo `best_match` → **HRRR** | ~3 km | written once per hour, never revised | `weather_hourly.precip_in` — fallback for hours before 2026-10-01, and for comparison |
+
+**Why these sources (owner's decision, 2026-09-30).** The site owner chose MRMS for rain received, NBM as its backup, and Open-Meteo (whose rain probability is NBM's) for forecasts because they gave **the most accurate data when checked against a local rain gauge on Weather Underground**. That verification was the owner's own, done outside this repo; there is no Weather Underground integration here and none is planned (its API is not free for non-station-owners).
+
+The comparison Claude ran the same day, for Big Cedar on 2026-09-30 (midnight to ~6 PM CDT), is kept here because it shows how far apart the options are:
+
+| Source | Kind | Distance | Rain |
+| --- | --- | --- | --- |
+| NWS Redbird airport ASOS (KRBD) | gauge | 8.9 km | 0.35 in |
+| TexMesonet Alvarado | gauge | 36 km | 0.24 in |
+| USGS Joe Pool Lake (08049800) | gauge | 4.1 km | 0.08 in |
+| **NOAA MRMS** (radar-only) | radar | trailhead | **0.19 in** |
+| **Open-Meteo NBM** | model | trailhead | **0.17 in** |
+| Open-Meteo ECMWF / ICON / GFS | model | 13–25 km cells | 0.21 / 0.06 / 0.03 in |
+| HRRR as stored in D1 / as Open-Meteo served it later | model | 0.7 km | 0.28 / 0.10 in |
+
+Two gauges 5 km apart differed 4×, which is the point: no single nearby gauge can stand in for a trail, and a model's first guess can differ from its own later answer by nearly 3×. Sources that were looked at and **not** used: USGS rain gauges (127 in the area, 15-min, free — but a gauge only speaks for its own spot, and the legacy `waterservices.usgs.gov` API returned 503s and is being replaced); CoCoRaHS (daily only, ~7 AM); NCEI GHCN-Daily (2–3 days behind); IEM's Stage IV/MRMS point API (its hourly endpoint already held values for hours that had not happened yet); Synoptic Data (needs an API token).
 
 1. **Scraper (write side):** `.github/workflows/trail-status-cron.yml` runs every 5 minutes and executes `scripts/update-trail-status.js` — a plain Node script that fetches each Trailforks page with browser-like headers, regex-parses status/city/LTA out of the tag-stripped HTML, and writes two KV values via the Cloudflare REST API: `trail_statuses_1` and `trail_statuses_2` (the source list is split in half to stay under time limits). Each value is `{ updatedAt, statuses: { [key]: { status, updated, detail, city?, lta? } } }`. City/LTA from the previous run are preserved when a fetch doesn't return them.
 
@@ -66,6 +97,8 @@ Five moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, 
 3. **Weather (write side, hourly):** `.github/workflows/weather-cron.yml` is scheduled on the hour and executes `scripts/update-weather.js`, which writes a third KV value, `trail_weather`. It fetches **Open-Meteo** — no API key, and one request carries every trailhead's coordinates, so there is no batching here. The request building and response shaping live in `public/weather.js`, imported by **both** the cron script and `worker.js`, so the two cannot drift. The value is `{ updatedAt, times: [12 epoch seconds], weather: { [key]: { pop, precip, temp } } }` — one shared `times` array, since every location comes from a single request. A failed run **exits non-zero without writing**, leaving the last good forecast in place rather than blanking it.
 
    Trailheads are grouped by coordinates rounded to 2 decimals (~1.1 km, finer than the model's own resolution) before the request, and the result is fanned back out to every key in the group — the skill parks share their parent region's coordinates, so this shrinks the request without changing an output value.
+
+   **The chance-of-rain percentage is NBM's, not HRRR's.** The request names no model, and HRRR is deterministic (it has no probability), so Open-Meteo fills `precipitation_probability` from the NWS National Blend of Models — measured 2026-09-30, `best_match` matched `ncep_nbm_conus` exactly while raw ECMWF/ICON/GFS read far higher (43–93% vs 23–38%). The rain *amounts* in the same response are HRRR. This is the forecast source the owner chose (see "Weather data sources at a glance"), but it is **not pinned**: Open-Meteo could change what `best_match` uses without notice. Add `models=ncep_nbm_conus` to `weatherRequestUrl()` if that ever needs guaranteeing.
 
    Unlike the status scrape, this one **works fine from a Worker**: Open-Meteo does not block Cloudflare the way Trailforks does, which is why `GET /api/weather` can fall back to fetching live, and why `wrangler dev` shows a real forecast locally.
 
@@ -109,6 +142,8 @@ Five moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, 
 
    **It fetches, where `history.js` only reads KV.** That is allowed here for the same reason `/api/weather` may fall back to a live fetch: Open-Meteo does not block Cloudflare. The "do not move scraping back onto a Worker" rule in Legacy is about **Trailforks only**.
 
+   **Each hour is written ONCE, and never revised.** The first cron tick of an hour writes that hour; `MAX(hour_ts)` then makes every later tick skip, and the 48-hour catch-up only reaches hours *after* the newest stored one. So a stored value is the model's first estimate, minutes old, and Open-Meteo's later corrections never reach D1 — on 2026-09-30 Big Cedar's stored HRRR rain was 0.28 in while Open-Meteo was serving 0.10 in for the same hours an hour later. That is the main reason rain received moved to item 6. The unexplained step changes in the soil-moisture series come from the same mechanism: each hour is a snapshot of whichever ICON run was newest, and consecutive runs do not join smoothly.
+
    **`best_match` is TWO models, not one, and the response hides it.** HRRR (~3 km) supplies precipitation, temperature, ET0, humidity, wind and radiation; it publishes **no soil data at all**, so all three soil-moisture depths and soil temperature come from **ICON (~11 km)**. The payload reports a single lat/lng — the HRRR cell — so it looks like one grid. Measured 2026-09-04: 55 distinct HRRR cells vs **43 distinct ICON cells** for the 58 trailheads, soil sampled a median **4.94 km** (max 8.49 km) from the trailhead and a median **5.08 km** from its own rain cell. Two consequences: soil moisture is roughly 4× coarser than the rainfall it is paired with, and because Open-Meteo picks the model, **a change on their side would move the soil columns to another source mid-series with nothing in the data to mark it**. Pin `models=` if that provenance ever needs to be guaranteed.
 
    Soil moisture is also **not independent evidence**: it is ICON's own land-surface bookkeeping, downstream of ICON's rainfall and radiation, so its errors correlate with the model's rather than cancelling them. It is a pre-computed water balance, not a measurement — there is no soil probe at any trailhead — and it knows nothing about the specific dirt, which is what `hydGroup` is for. The only ground truth in this database is `status_events`: the steward's own decision. Everything on the weather side is a model output.
@@ -119,7 +154,7 @@ Five moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, 
 
    | Column | Open-Meteo variable | Unit | Model | Why it is here |
    | --- | --- | --- | --- | --- |
-   | `precip_in` | `precipitation` | inches | HRRR ~3 km | Water **in** — the driver of every weather closure. This hour only, not cumulative |
+   | `precip_in` | `precipitation` | inches | HRRR ~3 km | The model's rain, this hour only. **No longer the rain of record** — since 2026-10-01 that is `rain_hourly` (item 6); this stays as the fallback for older hours and for comparison |
    | `temp_f` | `temperature_2m` | °F | HRRR ~3 km | Context. Weak as a drying predictor on its own, which is the whole reason `et0_in` exists |
    | `et0_in` | `et0_fao_evapotranspiration` | **inches** | HRRR ~3 km | Water **out** — FAO Penman-Monteith reference evapotranspiration, already folding temperature, humidity, wind and radiation into one number |
    | `humidity_pct` | `relative_humidity_2m` | % | HRRR ~3 km | An ET0 input, kept raw in case a model wants it directly |
@@ -166,7 +201,7 @@ Five moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, 
 
    **`status_events.reported_ts`** was added by the same migration. `reported_at` stays verbatim (it is the raw record); `reported_ts` resolves it to an absolute time, because Trailforks' string is the **steward's action time** and that is the correct label for a model predicting steward behaviour, where `observed_at` is only when the scraper noticed. **The precision is self-describing and callers must respect it**: a 10-character value is day-granular (`"Jul 17, 2026"`), anything longer is a resolved relative time (`"2 mins"`). Prefer `observed_at` for transitions this archive actually watched; `reported_ts` is for seeding events that predate 2026-08-30.
 
-   **Trailhead coordinates are good enough for this — with one exception that matters.** Measured 2026-09-03: the 58 trailheads resolve to **55 distinct Open-Meteo grid cells**, median offset from true coordinates **1.25 km**, max 1.95 km (HRRR ~3 km; `models=gfs_hrrr` returns the identical cell, so `best_match` is already using it). The 2-decimal rounding in `groupByLocation()` collapses 58 into 55 and all three collapsed groups are genuinely co-located — **leave the rounding alone**. Temperature, ET0 and soil moisture vary smoothly over 3 km, and the offset is smaller than the trail systems themselves. **Rainfall is the weak link**, and it is what the model leans on hardest: North Texas convection drops 2″ on one cell and 0.1″ three miles away, and `past_days` is *model output, not a gauge reading*. If prediction error ever tracks rainfall error, the upgrade is radar QPE (NOAA MRMS, ~1 km) or nearby gauge observations — not a prerequisite, and not worth building until the data says so.
+   **Trailhead coordinates are good enough for this — with one exception that matters.** Measured 2026-09-03: the 58 trailheads resolve to **55 distinct Open-Meteo grid cells**, median offset from true coordinates **1.25 km**, max 1.95 km (HRRR ~3 km; `models=gfs_hrrr` returns the identical cell, so `best_match` is already using it). The 2-decimal rounding in `groupByLocation()` collapses 58 into 55 and all three collapsed groups are genuinely co-located — **leave the rounding alone**. Temperature, ET0 and soil moisture vary smoothly over 3 km, and the offset is smaller than the trail systems themselves. **Rainfall is the weak link**, and it is what the model leans on hardest: North Texas convection drops 2″ on one cell and 0.1″ three miles away, and `past_days` is *model output, not a gauge reading*. That upgrade has now been made — rain received comes from NOAA MRMS radar since 2026-10-01; see item 6.
 
    **Soil is the largest non-weather driver.** `soilSeries`, `drainageClass` and `hydGroup` are on every entry in `trails.js`, looked up once from USDA NRCS SSURGO by `scripts/extract-soil.js` (free, no key, works anywhere — unlike the Trailforks tooling it needs no Actions runner). The spread is the whole point: **A=3, B=8, C=17, D=30**. Big Cedar is Stephen silty clay, group **D** (highest runoff, slowest to drain); Lindsey Park in Tyler is Pickton loamy fine sand, group **A**. Identical rain on those two does not produce remotely similar reopening times. Values are pinned in `scripts/soil.lock.json` and a bare `node scripts/extract-soil.js` exits 1 on drift, same discipline as `check:parking`. Note that trailhead coordinates are not survey markers — Tyler State Park's landed in a lake — so the lookup falls back through the parking coordinate and then a ring of offsets before giving up.
 
@@ -188,11 +223,34 @@ Five moving parts, connected by Cloudflare KV (namespace binding `TRAIL_CACHE`, 
 
    **A closure with no weather behind it is not a drying event, and must never be fitted as one.** If a trail closed and the archive shows **no meaningful rain AND no rise in soil moisture**, the weather did not cause it — something else did, and including it teaches the model that trails close out of a clear sky. `build-episodes.js` flags these as `no_weather_signal` and reports them separately from usable episodes.
 
-   **Judge it on BOTH signals, never rainfall alone.** `precip_in` is HRRR and `soil_moist_*` is ICON, and they genuinely disagree: at Mineola on 2026-09-03 HRRR recorded **0.03 in** while ICON recorded **0.80 in** — 27-fold, same day, same trail, and the soil moisture quadrupled in line with ICON. A rain-only rule would therefore also discard **real** rain closures that HRRR happened to miss, which is the more expensive error because those are the rows the model actually needs. Episodes where rainfall says nothing but the ground got wetter are flagged `model_disagreement` — investigate, do not discard.
+   **Judge it on BOTH signals, never rainfall alone.** Rain is MRMS radar (HRRR `precip_in` before 2026-10-01) and `soil_moist_*` is ICON, and they genuinely disagree: at Mineola on 2026-09-03 HRRR recorded **0.03 in** while ICON recorded **0.80 in** — 27-fold, same day, same trail, and the soil moisture quadrupled in line with ICON. A rain-only rule would therefore also discard **real** rain closures that HRRR happened to miss, which is the more expensive error because those are the rows the model actually needs. Episodes where rainfall says nothing but the ground got wetter are flagged `model_disagreement` — investigate, do not discard.
 
    **And no automated rule is sufficient, which is the real lesson.** Mineola's 2026-09-04 closure was a **concert**. The `no_weather_signal` test did *not* catch it: ICON rain had fallen two days earlier, so the ground genuinely was wetter and the episode reads like an honest drying event. Only the site owner knew otherwise. Hence `knownNonWeatherClosures` on a `trails.js` entry — `[{ from, to, reason }]`, `to: null` meaning still open-ended — which records a cause no column can show and always overrides the inferred flags. Expect to keep adding these; races, trail work and park events all close trails, and the data cannot tell you so.
 
    **Expect the model to be a year away, and expect the first surprise to be a data-quality one.** As of 2026-09-04 the archive holds 2 completed episodes, both Big Cedar, **both with zero rain in the preceding 72 hours, and both explained by the standing schedule above** — the archive currently contains *no* weather closures at all. Trail work, races and park events close trails too, and if those land in the training set the model learns that rain sometimes does not matter. Budget for hand-labelling the first season. The other constraint is statistical: every trail in a region sees the same storm, so 58 trails × 20 storms is **not** 1,160 samples — the effective count is nearer 20–30 independent events per year, which rules out machine learning and argues for a few-parameter physical model pooled across trails.
+
+6. **Observed rain (archive, hourly): `rain-history.js` → `rain_hourly`.** The rain of record — "how much rain did this trail actually get" — is **NOAA MRMS radar**, with the **NWS National Blend of Models (NBM)** filling any hour MRMS was missed; `source` on every row says which (`mrms` / `nbm`). Open-Meteo is still the source for every *forecast* (the Rain 8h column, `forecast_snapshots`); this replaces only rain already received. Schema and reasoning: `migrations/0004_rain_hourly.sql`.
+
+   **Why:** measured 2026-09-30 at Big Cedar, the stored HRRR value was 0.28 in, while the Redbird airport gauge (9 km) caught 0.35 in and the USGS Joe Pool Lake gauge (4 km) 0.08 in; Open-Meteo itself later revised that same HRRR hour to 0.10. `weather_hourly` keeps the model's *first guess*, captured minutes into the hour and never revised, so it is not an observation of anything.
+
+   **MRMS source:** the NWS image service `mapservices.weather.noaa.gov/raster/rest/services/obs/mrms_qpe/ImageServer`, layer `conus_QPE_01H` (1 km, last hour's accumulation, published ~4 min after the hour). One `getSamples` POST with a multipoint returns every trailhead in ~0.5 s. The raw MRMS GRIB2 feed was rejected because a Worker cannot decode a 24-million-pixel PNG-packed grid inside its CPU limit. Four things about this service are load-bearing:
+
+   - **It is radar-only, not gauge-corrected** — its own description says so. It under-read the Redbird gauge by half on 2026-09-30 (0.17 vs 0.35 in). The gauge-corrected MRMS Pass2 exists only as GRIB2; moving to it means a non-Worker job.
+   - **Its pixel values are millimetres, although its legend says inches.** `mmToIn()` converts. 4.7 "inches" at Big Cedar would have been a flood; gauges read 0.08–0.35 in.
+   - **It keeps only the newest hour.** Hour T is served from ~T+4 min until the next layer replaces it ~T+1h+4 min; after that it is gone from MRMS for good. That is what the NBM fill is for.
+   - **A bad layer name returns HTTP 200 with an `error` body**, and a point outside coverage is simply absent from `samples`. `shapeSamples()` handles both; don't "simplify" it into trusting the status code.
+
+   **The NBM fill (`hoursToFill()`):** an hour is filled from Open-Meteo `models=ncep_nbm_conus` once MRMS can no longer supply it — when the clock reaches T+2h, or as soon as a later MRMS hour is written — and only if it is absent. NBM was chosen over HRRR/best_match because it read closest to the radar and gauges on 2026-09-30 (0.17 in at Big Cedar vs MRMS 0.19). Three limits: a fill **never reaches before the archive's first hour** (it repairs gaps, it is not a backfill); it reaches back at most **`FILL_LOOKBACK_H` = 46 h** (Open-Meteo `past_days=2`), so a longer outage leaves hours with no row at all; and an **NBM hour is a model value**, not an observation — filter on `source` when that matters. The fill still runs when MRMS itself is down, so a radar outage degrades to NBM rather than to nothing. Fills are logged (`filled N missed MRMS hour(s) from NBM`) to `wrangler tail`.
+
+   A row with `rain_in` NULL = fetched, no value for that point. A missing row = neither source covered the hour. Neither is zero.
+
+   **Sampled at the trail's own point, not the Open-Meteo cell** — for both sources. 1 km pixels differ a lot inside a storm (Big Cedar on 2026-09-30: 4.7 mm at the trailhead, 9.6 mm at the 2-decimal rounded point 0.3 km away). `rainPoint()` uses the same precedence as `markerLatLng()` in `script.js` — primary lot, first lot, trail-level parking pin, then `lat`/`lng` — because ~17 `lat`/`lng` pairs are city-centre geocodes. It is restated in `rain-history.js` because `script.js` is browser-only; **change one, change both**.
+
+   **Hour convention:** `hour_ts` is the **end** of the hour — the raster's `idp_validendtime` (never the clock), and what Open-Meteo's `precipitation` means — so `rain_hourly` joins `weather_hourly` on `(trail_key, hour_ts)` directly. `scripts/build-episodes.js` does exactly that in `mergeRain()`, putting each hour on its row as `rain_obs_in` + `rain_obs_source`.
+
+   **Consumers:** `observedRain()` in `closure-classify.js` is the one accessor — `rain_obs_in` when present, else the HRRR `precip_in`, because every hour before 2026-10-01 has no archive row. An archive **zero** is a real observation and is *not* overruled by HRRR. `classifyClosure()` reports `rain_source` (`mrms` / `nbm` / `hrrr` / `mixed` / `none`) for its 72-hour window, and `build-episodes.js` carries it onto each episode, so a fit can tell radar-measured closures from modelled ones. **Episodes before 2026-10-01 are necessarily `hrrr`.**
+
+   **Cost:** WITHOUT ROWID with only a primary key, so **one write per row** (weather_hourly costs two): 58 rows/hour ≈ 1,400 writes/day, ~1.4% of the free tier; a full 46-hour fill is ~2,700. Which hours exist is read from **one trail's** rows by primary key (~48 reads), because every hour is written for all trails in one batch — `MAX(hour_ts)` over the whole table would scan every row every tick. Once the current hour is stored, the rest of that hour's ticks skip without fetching. Waited on separately in `scheduled()`, swallowing its own failure, like the other archives. Staging has the table but, as ever, no cron.
 
 ## Email alerts (the only personal data here)
 
@@ -461,6 +519,7 @@ module relative to `verify/` — so they must be run from the root):
 | `verify-dom.mjs` | general DOM shape, incl. that a trailhead with no stats offers no tip |
 | `verify-history.mjs` | **No jsdom, no D1** — `diffStatuses()` as a pure function: first sighting, unchanged runs writing nothing, and that an `Unavailable` outage collapses to a single transition spanning it. **Exits non-zero on failure** |
 | `verify-weather-history.mjs` | **No jsdom, no D1, no network** — the weather archive's pure functions: request building (including that the unit coupling is still `inch`/`fahrenheit`), row shaping and fan-out to co-located trailheads, that a null stays NULL rather than becoming 0, forecast-vintage JSON, the catch-up arithmetic, and `parseReportedAt()`'s precision contract. **Exits non-zero on failure** |
+| `verify-rain-history.mjs` | **No jsdom, no D1, no network** — the rain archive: mm→in, NoData/absent points stay NULL, sample-point precedence, fan-out, the one-raster and top-of-hour checks, which hours `hoursToFill()` hands to NBM (and that it never backfills or reaches past 46 h), `recordRainHour()`'s skip / MRMS / NBM-fill / MRMS-down / NBM-down paths against a fake D1, and that `observedRain()` prefers the archive (including a zero) over HRRR. **Exits non-zero on failure** |
 | `verify-weather.mjs` | the Rain 8h column and the popup block: peak, 8 bars, one aria-label, and that a missing forecast, a 503, or an aged-out cache all keep the row's cell count. **Exits non-zero on failure** |
 
 **What they cannot do:** `JSDOM` is constructed without `resources: "usable"`, so
@@ -470,7 +529,7 @@ Chromium can't be installed here without sudo. `verify-grid.mjs` exists precisel
 because the grid footgun is invisible to the others.
 
 **They print; most do not fail.** Only `verify-filter-persist`,
-`verify-stats-toggle`, `verify-weather` and `verify-history` exit non-zero. The rest print `FAIL` or `MISMATCH REMAINS`
+`verify-stats-toggle`, `verify-weather`, `verify-history`, `verify-weather-history` and `verify-rain-history` exit non-zero. The rest print `FAIL` or `MISMATCH REMAINS`
 and still exit 0, so `npm run verify` cannot yet gate a commit — someone has to
 read the output. Worth fixing if these ever go into CI.
 

@@ -2,6 +2,7 @@ import { allSources } from "./public/trails.js";
 import { fetchWeather, futureHourCount, DISPLAY_HOURS } from "./public/weather.js";
 import { recordStatusChanges } from "./history.js";
 import { recordWeatherHour } from "./weather-history.js";
+import { recordRainHour } from "./rain-history.js";
 import {
   handleConfirm,
   handleManage,
@@ -54,15 +55,17 @@ export default {
     return env.ASSETS.fetch(request);
   },
 
-  // Two archives, both write-only. Every 5 minutes, diff the KV scrape against
+  // Three archives, all write-only. Every 5 minutes, diff the KV scrape against
   // D1 and record anything that changed (history.js); on the first run of each
-  // hour, also record that hour's weather (weather-history.js). Deliberately NOT
+  // hour, also record that hour's weather (weather-history.js); and once the
+  // hour's MRMS radar layer is published, the rain each trail actually got
+  // (rain-history.js). Deliberately NOT
   // wired into fetch(): there is no /api/history route, because these are
   // archives the user asked to collect but not to publish yet.
   //
   // They are waited on SEPARATELY and each swallows its own failure. Status is
-  // the load-bearing one; an Open-Meteo outage must never be able to cost us a
-  // transition, and a transition recorded is not worth losing to a weather 503.
+  // the load-bearing one; an Open-Meteo or NOAA outage must never be able to cost
+  // us a transition, and a transition recorded is not worth losing to a 503.
   async scheduled(event, env, ctx) {
     // The alerts hang off the status archive rather than running beside it, and
     // deliberately AFTER its batch has committed. The archive is the load-bearing
@@ -85,6 +88,9 @@ export default {
     }));
     ctx.waitUntil(recordWeatherHour(env).catch((error) => {
       console.error(`weather archive failed: ${error.message}`);
+    }));
+    ctx.waitUntil(recordRainHour(env).catch((error) => {
+      console.error(`rain archive failed: ${error.message}`);
     }));
   }
 };

@@ -36,8 +36,35 @@ export const WET_LOOKBACK_H = 72;
 // March 2026, and they must never enter a drying fit.
 export const STALE_CLOSURE_DAYS = 21;
 
+// The rain one hour actually delivered. `rain_hourly` is the source of record,
+// merged onto the row as `rain_obs_in` + `rain_obs_source`: MRMS radar, or NBM
+// for an hour MRMS was missed. The HRRR model's `precip_in` is only a fallback
+// for hours rain_hourly does not cover at all — everything before the rain
+// archive began on 2026-10-01. `rainSource()` reports which a window leaned on,
+// so a fit can tell a radar-measured closure from a modelled one.
+export function observedRain(r) {
+  return r.rain_obs_in ?? r.precip_in ?? 0;
+}
+
+function hourSource(r) {
+  if (r.rain_obs_in != null) return r.rain_obs_source || "mrms";
+  return r.precip_in != null ? "hrrr" : null;
+}
+
+// "mrms" | "nbm" | "hrrr" when one source covers the whole window, "mixed" when
+// it spans more than one, "none" when nothing does.
+export function rainSource(rows, from, to) {
+  const seen = new Set();
+  for (const r of rows) {
+    if (r.hour_ts < from || r.hour_ts >= to) continue;
+    const s = hourSource(r);
+    if (s) seen.add(s);
+  }
+  return seen.size === 0 ? "none" : seen.size === 1 ? [...seen][0] : "mixed";
+}
+
 function rainfall(rows, from, to) {
-  return rows.reduce((a, r) => (r.hour_ts >= from && r.hour_ts < to ? a + (r.precip_in || 0) : a), 0);
+  return rows.reduce((a, r) => (r.hour_ts >= from && r.hour_ts < to ? a + observedRain(r) : a), 0);
 }
 
 // How much wetter the ground got before the closure, against its own baseline a
@@ -63,7 +90,7 @@ export function lastWettingHour(rows, from, to) {
   let last = null;
   for (const r of rows) {
     if (r.hour_ts < from || r.hour_ts > to) continue;
-    if ((r.precip_in || 0) >= 0.01) last = r.hour_ts;
+    if (observedRain(r) >= 0.01) last = r.hour_ts;
   }
   return last;
 }
@@ -113,7 +140,11 @@ export function classifyClosure(trail, closedTs, weatherRows = [], now = Date.no
   const rain = rainfall(weatherRows, closedTs - WET_LOOKBACK_H * HOUR, closedTs);
   const rise = soilRise(weatherRows, closedTs);
   const wet = rain >= NO_RAIN_IN || (rise !== null && rise >= NO_SOIL_RISE);
-  const base = { rain_72h: +rain.toFixed(3), soil_rise: rise === null ? null : +rise.toFixed(3) };
+  const base = {
+    rain_72h: +rain.toFixed(3),
+    rain_source: rainSource(weatherRows, closedTs - WET_LOOKBACK_H * HOUR, closedTs),
+    soil_rise: rise === null ? null : +rise.toFixed(3)
+  };
 
   // Order matters. A recorded human cause outranks everything, because it is the
   // only input here that is actually ground truth rather than inference.

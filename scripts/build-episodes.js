@@ -20,6 +20,7 @@ import {
   classifyClosure,
   localDow,
   knownNonWeather,
+  observedRain,
   onScheduledDay,
   scheduledOverlap,
   REOPEN_GRACE
@@ -62,9 +63,9 @@ function eventTime(row) {
 // drying event, and both were invisible in the data until someone said so.
 //
 // Two signals, not one, and the second is the important one. Judging by rainfall
-// alone would be wrong here: precip_in comes from HRRR while soil moisture comes
-// from ICON, and on 2026-09-03 at Mineola they disagreed 27-fold (0.03 in vs
-// 0.80 in). A rain-only rule would therefore also discard REAL rain closures
+// alone would be wrong here: rain comes from MRMS radar (NBM for missed hours;
+// the HRRR model before 2026-10-01) while soil moisture comes from ICON, and on 2026-09-03 at
+// Mineola HRRR and ICON disagreed 27-fold (0.03 in vs 0.80 in). A rain-only rule would therefore also discard REAL rain closures
 // that HRRR happened to miss — the opposite error, and a much more expensive one
 // because those are the rows the model actually needs.
 //
@@ -74,6 +75,30 @@ function eventTime(row) {
 // throw away.
 function sum(rows, field, from, to) {
   return rows.reduce((acc, r) => (r.hour_ts >= from && r.hour_ts < to ? acc + (r[field] || 0) : acc), 0);
+}
+
+function sumRain(rows, from, to) {
+  return rows.reduce((acc, r) => (r.hour_ts >= from && r.hour_ts < to ? acc + observedRain(r) : acc), 0);
+}
+
+// Put each rain_hourly hour on its weather row as `rain_obs_in` +
+// `rain_obs_source` (the fields closure-classify.js reads). Both tables key an
+// hour by its END, so this is a straight join on (trail_key, hour_ts). A rain
+// hour with no weather row still counts — it gets a row of its own.
+export function mergeRain(weather, rain) {
+  const byKey = new Map(weather.map((w) => [`${w.trail_key}|${w.hour_ts}`, w]));
+  for (const r of rain) {
+    const k = `${r.trail_key}|${r.hour_ts}`;
+    const row = byKey.get(k);
+    if (row) Object.assign(row, { rain_obs_in: r.rain_in, rain_obs_source: r.source });
+    else {
+      const added = { trail_key: r.trail_key, hour_ts: r.hour_ts, rain_obs_in: r.rain_in, rain_obs_source: r.source };
+      byKey.set(k, added);
+      weather.push(added);
+    }
+  }
+  weather.sort((a, b) => (a.trail_key === b.trail_key ? a.hour_ts - b.hour_ts : a.trail_key < b.trail_key ? -1 : 1));
+  return weather;
 }
 
 // Guarded so verify/ can import scheduledOverlap() without the module shelling
@@ -93,6 +118,7 @@ const isMain = process.argv[1] && process.argv[1].endsWith("build-episodes.js");
     "SELECT trail_key, hour_ts, precip_in, et0_in, soil_moist_0_1, temp_f FROM weather_hourly ORDER BY trail_key, hour_ts",
     remote
   );
+  mergeRain(weather, query("SELECT trail_key, hour_ts, rain_in, source FROM rain_hourly", remote));
 
   const byTrailWeather = {};
   for (const w of weather) (byTrailWeather[w.trail_key] ||= []).push(w);
@@ -133,7 +159,10 @@ const isMain = process.argv[1] && process.argv[1].endsWith("build-episodes.js");
           start_known: closedAt.seeded ? 0 : 1,
           hours_closed: +((openedTs - closedAt.ts) / HOUR).toFixed(2),
           rain_72h_before: cls.rain_72h,
-          rain_during: +sum(w, "precip_in", closedAt.ts, openedTs).toFixed(3),
+          // "mrms" | "nbm" | "hrrr" | "mixed" | "none" — whether that rain was
+          // seen by radar or only modelled. Episodes before 2026-10-01 are "hrrr".
+          rain_source: cls.rain_source,
+          rain_during: +sumRain(w, closedAt.ts, openedTs).toFixed(3),
           et0_during: +sum(w, "et0_in", closedAt.ts, openedTs).toFixed(3),
           soil_moist_at_open: w.find((x) => x.hour_ts >= openedTs - HOUR)?.soil_moist_0_1 ?? null,
           // 1 = every hour of this closure fell on a scheduled-closure day, so
