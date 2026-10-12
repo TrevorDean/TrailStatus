@@ -375,9 +375,12 @@ trailhead positions — commit `1ff5e21` geocoded them from each trail's `city`
 field via Nominatim, and about 17 of 58 are city-center approximations. Four of
 the `city` values ("North Dallas Region", "Far North Region", "South Dallas
 Region", "East Dallas Region", "Mid-Cities Region") aren't real places, so those
-fell back to a metro centroid: `katie-jackson-park-dorba`'s `lat`/`lng` is 0.05 km
-from downtown Dallas, 25.7 km from its parking pin — and there the *parking* is
-the correct one. 23 of 58 pairs are >2 km apart, so the comparison flags 40% of
+fell back to a metro centroid: `katie-jackson-park-dorba`'s `lat`/`lng` was 0.05 km
+from downtown Dallas, 25.7 km from its parking pin — and there the *parking* was
+the correct one. It was moved by hand on 2026-10-11 to the middle of the trail
+system (33.00738, -96.81722, from the OSM loops), because the 8h forecast, the
+Weather.com link and `weather_hourly` all read `lat`/`lng`; its `weather_hourly`
+rows before that date are downtown Dallas weather. Soil re-resolved unchanged. 23 of 58 pairs are >2 km apart, so the comparison flags 40% of
 the dataset without indicating which side is wrong.
 
 This replaced an earlier arrangement where the list was copy-pasted across four files. `public/_worker.js` no longer exists — local dev and production both run `worker.js` now.
