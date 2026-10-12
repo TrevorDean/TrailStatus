@@ -625,7 +625,15 @@ function parkingLots(trail) {
 // rider would consider them, but only lot 2 is actually on the trail (lot 1 is
 // 3.4 km away), so ordering the array to fix the marker would misnumber the
 // buttons.
+//
+// `markerLat`/`markerLng` override all of that, and move only the dot — the
+// parking buttons keep routing to the lot. It exists for two entries sharing a
+// lot: Katie Jackson's DORBA trail and its skill park both park on Haverwood
+// Ln, so the skill park's dot sits on the north (Yellow Loop) half instead.
 function markerLatLng(trail) {
+  if (typeof trail.markerLat === "number" && typeof trail.markerLng === "number") {
+    return [trail.markerLat, trail.markerLng];
+  }
   const lots = parkingLots(trail);
   const pin = lots.find(lot => lot.primary) || lots[0];
   return pin ? [pin.lat, pin.lng] : [trail.lat, trail.lng];
