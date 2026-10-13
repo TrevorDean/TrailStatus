@@ -52,6 +52,10 @@ let statuses = {};
 // stays empty if it fails — every reader goes through rainOutlook(), which
 // returns null and lets the UI fall back to a placeholder.
 let forecast = { times: [], weather: {} };
+// Reopening / closing estimates from /api/predictions (predictions.js, hourly).
+// Empty until loadPredictions() resolves, and stays empty if it fails; every
+// reader goes through predictionInfo(), which returns null and renders nothing.
+let predictions = { bandHours: null, predictions: {} };
 // The view a FIRST-TIME visitor opens on; afterwards the saved view wins.
 // index.html's markup (active button, hidden classes) must match this, or
 // first-time visitors get a flash of the wrong view before JS runs.
@@ -538,7 +542,7 @@ function renderRow(trail) {
       <div class="trail-name-cell">${favBtn}<a class="trail-name" href="${trail.url}" title="${sourceText}" target="_blank" rel="noopener">${trail.name}</a>${statsBtn}</div>
       <span class="status-pill ${statusClass}">${status}</span>
       ${rainCell(trail)}
-      <span class="status-updated">${trail.updatedNote ? `<span class="updated-note" tabindex="0" data-tooltip="${trail.updatedNote}">${updated}</span>` : updated}</span>
+      <span class="status-updated">${trail.updatedNote ? `<span class="updated-note" tabindex="0" data-tooltip="${trail.updatedNote}">${updated}</span>` : updated}${predictionLine(trail)}</span>
       <span class="trail-city">${trail.displayCity || statuses[trail.key]?.city || trail.city}</span>
       <span class="trail-difficulty">${difficultyCell(trail)}</span>
       <span class="trail-lta">${renderLTA(statuses[trail.key]?.lta || trail.lta || "Unknown")}</span>
@@ -574,6 +578,60 @@ function formatUpdated(updated) {
 
 // The buckets themselves live in status-buckets.js so the archive tooling and
 // the reopening alerts cannot draw this line differently than the page does.
+// ---- Drying-model estimates (see predictions.js / drying-model.js) ----
+// "Thu PM", "today AM", "tomorrow eve" — coarse on purpose: the model is good
+// to about a day, so a minute would claim a precision it does not have.
+function dayPart(ts, long) {
+  const d = new Date(ts * 1000);
+  const tz = "America/Chicago";
+  const ymd = (x) => x.toLocaleDateString("en-CA", { timeZone: tz });
+  const today = new Date();
+  const tomorrow = new Date(today.getTime() + 86400000);
+  const day = ymd(d) === ymd(today) ? "today"
+    : ymd(d) === ymd(tomorrow) ? "tomorrow"
+    : d.toLocaleDateString("en-US", { timeZone: tz, weekday: long ? "long" : "short" });
+  const hour = Number(d.toLocaleString("en-US", { timeZone: tz, hour: "2-digit", hour12: false })) % 24;
+  const part = hour < 12 ? (long ? "morning" : "AM") : hour < 17 ? (long ? "afternoon" : "PM") : (long ? "evening" : "eve");
+  return `${day} ${part}`;
+}
+
+// { kind, short, long } for the trail's current estimate, or null. An estimate
+// is shown only while the live status still agrees with it — predictions are
+// up to an hour old, and a reopening estimate on a trail that has since opened
+// would be noise.
+function predictionInfo(trail) {
+  const p = predictions.predictions?.[trail.key];
+  if (!p) return null;
+  const bucket = statusBucket(statuses[trail.key]?.status || "");
+  const band = predictions.bandHours ? `typically within ±${predictions.bandHours} h` : "a rough estimate";
+  const basis = `Estimated from radar rain and evaporation (${band}). Trail stewards make the call.`;
+  if (bucket === "closed" && p.overdue) {
+    return { kind: "reopen", short: "Should be dry", long: `Should be dry by now; waiting on the trail steward. ${basis}` };
+  }
+  if (bucket === "closed" && p.reopenAt) {
+    return { kind: "reopen", short: `Reopen ~${dayPart(p.reopenAt)}`, long: `Estimated reopening ${dayPart(p.reopenAt, true)}. ${basis}` };
+  }
+  if (bucket === "closed" && p.reopenAfter) {
+    return { kind: "reopen", short: `Reopen after ${dayPart(p.reopenAfter).split(" ")[0]}`, long: `Not expected to dry out before ${dayPart(p.reopenAfter, true)}. ${basis}` };
+  }
+  if (bucket !== "closed" && p.closeAt) {
+    return { kind: "close", short: `May close ${dayPart(p.closeAt)}`, long: `Forecast rain may close this trail ${dayPart(p.closeAt, true)}. ${basis}` };
+  }
+  return null;
+}
+
+function predictionLine(trail) {
+  const info = predictionInfo(trail);
+  if (!info) return "";
+  return `<span class="prediction prediction-${info.kind}" title="${info.long}">${info.short}</span>`;
+}
+
+function predictionPopupHtml(trail) {
+  const info = predictionInfo(trail);
+  if (!info) return "";
+  return `<div class="map-popup-meta prediction-${info.kind}"><strong>Estimate:</strong> ${info.long}</div>`;
+}
+
 function statusClassFor(status) {
   return `status-${statusBucket(status)}`;
 }
@@ -679,6 +737,7 @@ function mapPopupHtml(trail) {
       <a class="map-popup-name" href="${trail.url}" target="_blank" rel="noopener">${trail.name}</a>
       <div class="map-popup-row"><span class="status-pill ${statusClass}">${status}</span></div>
       <div class="map-popup-meta"><strong>Updated:</strong> ${updated}</div>
+      ${predictionPopupHtml(trail)}
       <div class="map-popup-meta"><strong>City:</strong> ${city}</div>
       <div class="map-popup-meta"><strong>Trail org:</strong> ${lta}</div>
       ${statsPopupHtml(trail)}
@@ -762,6 +821,21 @@ async function loadWeather() {
   }
   // Not renderCurrentView(): that refits the map bounds, and weather arriving a
   // moment after status must not yank a map the visitor may already have moved.
+  if (currentView === "map") renderMap(false);
+  else render();
+}
+
+// Same contract as loadWeather(): parallel, never awaited, silent on failure.
+async function loadPredictions() {
+  try {
+    const response = await fetch("/api/predictions");
+    if (!response.ok) throw new Error(`Predictions request failed with ${response.status}`);
+    const data = await response.json();
+    if (!data?.predictions) return;
+    predictions = data;
+  } catch (error) {
+    return;
+  }
   if (currentView === "map") renderMap(false);
   else render();
 }
@@ -854,6 +928,7 @@ restoreFilters(); // before the first render, so it draws the saved selection
 setView(startView); // saved view if there is one, otherwise DEFAULT_VIEW
 loadStatuses();
 loadWeather(); // in parallel, deliberately not awaited by loadStatuses()
+loadPredictions(); // likewise
 
 const infoBtn = document.getElementById('info-btn');
 const infoModal = document.getElementById('info-modal');

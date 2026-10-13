@@ -113,6 +113,60 @@ export async function fetchWeather(trails = TRAILS, fetchImpl = fetch) {
 }
 
 // ---------------------------------------------------------------------------
+// Prediction side — the drying model's view of the next week (predictions.js).
+//
+// Seven days rather than the Rain 8h column's 24 hours, because a closure after
+// a big storm runs five to ten days; and ET0 as well as rain, because drying is
+// what the model is waiting for. Same endpoint, units and grouping as above, so
+// the forecast matches the archive the model was fitted on. Rain is weighted by
+// its probability — 0.5 in at 30% enters the bucket as 0.15 in — which turns a
+// scattered-storm forecast into an expected amount rather than a certainty.
+export const PREDICTION_FORECAST_DAYS = 7;
+
+export function predictionForecastUrl(groups) {
+  const params = new URLSearchParams({
+    latitude: groups.map((g) => g.lat).join(","),
+    longitude: groups.map((g) => g.lng).join(","),
+    hourly: "precipitation,precipitation_probability,et0_fao_evapotranspiration",
+    temperature_unit: "fahrenheit",
+    precipitation_unit: "inch",
+    timezone: "America/Chicago",
+    timeformat: "unixtime",
+    forecast_days: String(PREDICTION_FORECAST_DAYS)
+  });
+  return `${ENDPOINT}?${params}`;
+}
+
+// { [trail_key]: [{ hour_ts, precip_in, et0_in }, ...] } — the row shape the
+// drying model reads, so forecast hours can follow archive hours in one series.
+export function shapePredictionForecast(payload, groups) {
+  const entries = Array.isArray(payload) ? payload : [payload];
+  const out = {};
+  groups.forEach((group, i) => {
+    const hourly = entries[i]?.hourly;
+    if (!hourly?.time?.length) throw new Error(`Open-Meteo returned no hourly block for location ${i}`);
+    const rows = hourly.time.map((t, h) => {
+      const amount = hourly.precipitation?.[h];
+      const pop = hourly.precipitation_probability?.[h];
+      return {
+        hour_ts: Number(t),
+        precip_in: amount == null ? null : pop == null ? Number(amount) : Number(amount) * (pop / 100),
+        et0_in: hourly.et0_fao_evapotranspiration?.[h] ?? null
+      };
+    });
+    for (const key of group.keys) out[key] = rows;
+  });
+  return out;
+}
+
+export async function fetchPredictionForecast(trails = TRAILS, fetchImpl = fetch) {
+  const groups = groupByLocation(trails);
+  const response = await fetchImpl(predictionForecastUrl(groups));
+  if (!response.ok) throw new Error(`Open-Meteo returned ${response.status}`);
+  return shapePredictionForecast(await response.json(), groups);
+}
+
+// ---------------------------------------------------------------------------
 // Archive side — the variable set the reopening model is built on.
 //
 // Everything above serves the RIDER: chance of rain for the next 8 hours. What

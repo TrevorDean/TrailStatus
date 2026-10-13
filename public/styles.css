@@ -525,6 +525,26 @@ main {
   white-space: nowrap;
 }
 
+/* Drying-model estimate, a second line inside the Updated cell rather than a
+   column of its own (see CLAUDE.md, "The list-view grid has a footgun"). It
+   wraps, unlike the date above it, because that track can be 50px wide. */
+.prediction {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-top: 2px;
+  white-space: normal;
+}
+
+.prediction-reopen {
+  color: var(--accent-strong);
+}
+
+.prediction-close {
+  color: var(--warn);
+}
+
 .status-pill {
   border-radius: 999px;
   flex: 0 0 auto;

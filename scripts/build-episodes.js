@@ -23,7 +23,9 @@ import {
   observedRain,
   onScheduledDay,
   scheduledOverlap,
-  REOPEN_GRACE
+  REOPEN_GRACE,
+  eventTime,
+  mergeRain
 } from "../closure-classify.js";
 
 // Re-exported because both definitions moved out from under this file — the
@@ -31,7 +33,7 @@ import {
 // in node:child_process. verify/verify-weather-history.mjs imports
 // scheduledOverlap from here, and the point of the move was to stop these
 // definitions existing twice, not to relocate the second copy.
-export { isClosedStatus, scheduledOverlap, REOPEN_GRACE };
+export { isClosedStatus, scheduledOverlap, REOPEN_GRACE, mergeRain };
 
 const DB = "ntx-history";
 const HOUR = 3600;
@@ -41,15 +43,6 @@ function query(sql, remote) {
   if (remote) args.push("--remote");
   const out = execFileSync("npx", args, { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   return JSON.parse(out.slice(out.indexOf("[")))[0].results || [];
-}
-
-// Trailforks' own action time when we have it at full precision, else when the
-// scraper saw it. A 10-character reported_ts is day-granular (see history.js) and
-// is deliberately NOT preferred — for a transition this archive actually watched,
-// observed_at is the more precise of the two.
-function eventTime(row) {
-  if (row.reported_ts && row.reported_ts.length > 10) return Date.parse(row.reported_ts) / 1000;
-  return Date.parse(row.observed_at) / 1000;
 }
 
 // Weekday, wetness thresholds, known-cause lookup and the whole at-closure-time
@@ -81,35 +74,10 @@ function sumRain(rows, from, to) {
   return rows.reduce((acc, r) => (r.hour_ts >= from && r.hour_ts < to ? acc + observedRain(r) : acc), 0);
 }
 
-// Put each rain_hourly hour on its weather row as `rain_obs_in` +
-// `rain_obs_source` (the fields closure-classify.js reads). Both tables key an
-// hour by its END, so this is a straight join on (trail_key, hour_ts). A rain
-// hour with no weather row still counts — it gets a row of its own.
-export function mergeRain(weather, rain) {
-  const byKey = new Map(weather.map((w) => [`${w.trail_key}|${w.hour_ts}`, w]));
-  for (const r of rain) {
-    const k = `${r.trail_key}|${r.hour_ts}`;
-    const row = byKey.get(k);
-    if (row) Object.assign(row, { rain_obs_in: r.rain_in, rain_obs_source: r.source });
-    else {
-      const added = { trail_key: r.trail_key, hour_ts: r.hour_ts, rain_obs_in: r.rain_in, rain_obs_source: r.source };
-      byKey.set(k, added);
-      weather.push(added);
-    }
-  }
-  weather.sort((a, b) => (a.trail_key === b.trail_key ? a.hour_ts - b.hour_ts : a.trail_key < b.trail_key ? -1 : 1));
-  return weather;
-}
-
-// Guarded so verify/ can import scheduledOverlap() without the module shelling
-// out to wrangler on import.
-const isMain = process.argv[1] && process.argv[1].endsWith("build-episodes.js");
-
-(async () => {
-  if (!isMain) return;
-  const remote = process.argv.includes("--remote");
-  const csv = process.argv.includes("--csv");
-
+// Everything a fit needs from D1, in one place: status events, and the hourly
+// weather rows per trail with observed rain merged on. Exported so
+// scripts/fit-drying-model.js reads the archive exactly the way this does.
+export function loadArchive(remote) {
   const events = query(
     "SELECT trail_key, prev_status, status, reported_ts, observed_at FROM status_events ORDER BY trail_key, observed_at",
     remote
@@ -122,7 +90,11 @@ const isMain = process.argv[1] && process.argv[1].endsWith("build-episodes.js");
 
   const byTrailWeather = {};
   for (const w of weather) (byTrailWeather[w.trail_key] ||= []).push(w);
+  return { events, weather, byTrailWeather };
+}
 
+// One row per completed closure. Pure: no D1, so a fit can re-derive at will.
+export function deriveEpisodes(events, byTrailWeather) {
   const meta = Object.fromEntries(TRAILS.map((t) => [t.key, t]));
   const episodes = [];
 
@@ -149,6 +121,8 @@ const isMain = process.argv[1] && process.argv[1].endsWith("build-episodes.js");
         const known = knownNonWeather(t, closedAt.ts);
         episodes.push({
           trail_key: key,
+          closed_ts: closedAt.ts,
+          opened_ts: openedTs,
           org: t.lta || "",
           hyd_group: t.hydGroup || "",
           soil_series: t.soilSeries || "",
@@ -194,6 +168,20 @@ const isMain = process.argv[1] && process.argv[1].endsWith("build-episodes.js");
   }
 
   episodes.sort((a, b) => a.opened_at.localeCompare(b.opened_at));
+  return episodes;
+}
+
+// Guarded so verify/ can import scheduledOverlap() without the module shelling
+// out to wrangler on import.
+const isMain = process.argv[1] && process.argv[1].endsWith("build-episodes.js");
+
+(async () => {
+  if (!isMain) return;
+  const remote = process.argv.includes("--remote");
+  const csv = process.argv.includes("--csv");
+
+  const { events, weather, byTrailWeather } = loadArchive(remote);
+  const episodes = deriveEpisodes(events, byTrailWeather);
 
   if (csv) {
     if (episodes.length === 0) return;

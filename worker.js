@@ -3,6 +3,7 @@ import { fetchWeather, futureHourCount, DISPLAY_HOURS } from "./public/weather.j
 import { recordStatusChanges } from "./history.js";
 import { recordWeatherHour } from "./weather-history.js";
 import { recordRainHour } from "./rain-history.js";
+import { recordPredictions, handlePredictions } from "./predictions.js";
 import {
   handleConfirm,
   handleManage,
@@ -36,6 +37,11 @@ export default {
     }
     if (url.pathname === "/api/weather") {
       return handleWeather(env);
+    }
+    // Separate from /api/status for the same reason weather is: a model or
+    // forecast failure must never take the status feed down with it.
+    if (url.pathname === "/api/predictions") {
+      return handlePredictions(env);
     }
     // The alert routes are the first here that need the request itself — a body,
     // a query string, and a method. The two above deliberately still take only
@@ -91,6 +97,11 @@ export default {
     }));
     ctx.waitUntil(recordRainHour(env).catch((error) => {
       console.error(`rain archive failed: ${error.message}`);
+    }));
+    // Not an archive: a derived value, refreshed hourly in KV. Reads D1, writes
+    // nothing there. Same isolation — a failure here costs only the prediction.
+    ctx.waitUntil(recordPredictions(env).catch((error) => {
+      console.error(`predictions failed: ${error.message}`);
     }));
   }
 };

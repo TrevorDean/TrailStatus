@@ -28,6 +28,15 @@ export const NO_RAIN_IN = 0.05;      // inches over the look-back window
 export const NO_SOIL_RISE = 0.05;    // m³/m³ rise above the preceding baseline
 export const WET_LOOKBACK_H = 72;
 
+// Stewards close as the rain starts, or ahead of the forecast, so the rain that
+// explains a closure can land AFTER it. Big Cedar closed at 3:26pm on
+// 2026-09-30, in the middle of the 0.16 in hour that closed it; a window ending
+// at closedTs saw 0.008 in and called it "unexplained". The window therefore
+// runs a few hours past the closure. Like LEAD_GRACE_H, it is small on purpose:
+// three hours catches a storm already arriving, not one forecast for tomorrow.
+// The live path covers the forward-looking case with the forecast instead.
+export const CLOSE_LEAD_H = 3;
+
 // Past this, a closure is not a drying event whatever the weather did. Nothing
 // in North Texas takes three weeks to dry; a trail still shut after that is
 // closed for a reason the weather cannot explain — construction, a lease
@@ -44,6 +53,28 @@ export const STALE_CLOSURE_DAYS = 21;
 // so a fit can tell a radar-measured closure from a modelled one.
 export function observedRain(r) {
   return r.rain_obs_in ?? r.precip_in ?? 0;
+}
+
+// Put each rain_hourly hour on its weather row as `rain_obs_in` +
+// `rain_obs_source` (the fields closure-classify.js reads). Both tables key an
+// hour by its END, so this is a straight join on (trail_key, hour_ts). A rain
+// hour with no weather row still counts — it gets a row of its own. Lives here,
+// beside observedRain(), because the Worker's live predictor needs it too and
+// cannot import build-episodes.js (node:child_process); that file re-exports it.
+export function mergeRain(weather, rain) {
+  const byKey = new Map(weather.map((w) => [`${w.trail_key}|${w.hour_ts}`, w]));
+  for (const r of rain) {
+    const k = `${r.trail_key}|${r.hour_ts}`;
+    const row = byKey.get(k);
+    if (row) Object.assign(row, { rain_obs_in: r.rain_in, rain_obs_source: r.source });
+    else {
+      const added = { trail_key: r.trail_key, hour_ts: r.hour_ts, rain_obs_in: r.rain_in, rain_obs_source: r.source };
+      byKey.set(k, added);
+      weather.push(added);
+    }
+  }
+  weather.sort((a, b) => (a.trail_key === b.trail_key ? a.hour_ts - b.hour_ts : a.trail_key < b.trail_key ? -1 : 1));
+  return weather;
 }
 
 function hourSource(r) {
@@ -95,6 +126,16 @@ export function lastWettingHour(rows, from, to) {
   return last;
 }
 
+// Trailforks' own action time when we have it at full precision, else when the
+// scraper saw it. A 10-character reported_ts is day-granular (see history.js) and
+// is deliberately NOT preferred — for a transition this archive actually watched,
+// observed_at is the more precise of the two. Lives here, not in
+// build-episodes.js, because the live predictor times closures the same way.
+export function eventTime(row) {
+  if (row.reported_ts && row.reported_ts.length > 10) return Date.parse(row.reported_ts) / 1000;
+  return Date.parse(row.observed_at) / 1000;
+}
+
 export function localDow(ts, tz = "America/Chicago") {
   const d = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short" }).format(new Date(ts * 1000));
   return { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[d];
@@ -137,12 +178,14 @@ export function onScheduledDay(trail, ts) {
  */
 export function classifyClosure(trail, closedTs, weatherRows = [], now = Date.now() / 1000) {
   const known = knownNonWeather(trail, closedTs);
-  const rain = rainfall(weatherRows, closedTs - WET_LOOKBACK_H * HOUR, closedTs);
+  const rainFrom = closedTs - WET_LOOKBACK_H * HOUR;
+  const rainTo = closedTs + CLOSE_LEAD_H * HOUR;
+  const rain = rainfall(weatherRows, rainFrom, rainTo);
   const rise = soilRise(weatherRows, closedTs);
   const wet = rain >= NO_RAIN_IN || (rise !== null && rise >= NO_SOIL_RISE);
   const base = {
     rain_72h: +rain.toFixed(3),
-    rain_source: rainSource(weatherRows, closedTs - WET_LOOKBACK_H * HOUR, closedTs),
+    rain_source: rainSource(weatherRows, rainFrom, rainTo),
     soil_rise: rise === null ? null : +rise.toFixed(3)
   };
 
