@@ -48,6 +48,9 @@ directory = "public"
 [env.staging.vars]
 SITE_ORIGIN = "https://ntx-staging.trailstatus.workers.dev"
 ALERTS_FROM = "NTX Trail Status (staging) <alerts@ntxtrailstatus.com>"
+# The shared KV namespace means staging must keep its predictions under its own
+# key, or any staging run overwrites production's (see predictions.js).
+PREDICTIONS_KEY = "trail_predictions_staging"
 
 [[env.staging.kv_namespaces]]
 binding = "TRAIL_CACHE"

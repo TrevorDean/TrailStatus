@@ -25,7 +25,11 @@ import { classifyClosure, eventTime, mergeRain } from "./closure-classify.js";
 import { simulate, predictReopen, predictClose, wasWetted, levelAt, snapToWindow } from "./drying-model.js";
 
 const HOUR = 3600;
-const KV_KEY = "trail_predictions";
+// Per environment, because staging shares production's KV namespace: on
+// 2026-10-13 one stray staging cron run (its trigger was still propagating
+// after being removed) wrote 58 "no-data" predictions built from the staging
+// database over production's. Staging sets PREDICTIONS_KEY in wrangler.toml.
+const kvKey = (env) => env.PREDICTIONS_KEY || "trail_predictions";
 const HISTORY_DAYS = 10;      // spin-up: a full bucket drains well inside this
 const EVENTS_DAYS = 30;       // how far back to look for when a closure began
 const CLOSE_HORIZON_H = 48;   // only warn about a closure this close
@@ -91,7 +95,7 @@ export function predictTrail(trail, status, closedTs, observed, forecast, now, p
 
 export async function recordPredictions(env, now = Date.now() / 1000) {
   if (!env.TRAIL_CACHE || !env.TRAIL_HISTORY) return { skipped: "no bindings" };
-  const existing = await env.TRAIL_CACHE.get(KV_KEY, { type: "json" });
+  const existing = await env.TRAIL_CACHE.get(kvKey(env), { type: "json" });
   if (existing?.updatedAt && now - Date.parse(existing.updatedAt) / 1000 < REFRESH_S) return { skipped: "fresh" };
 
   const db = env.TRAIL_HISTORY;
@@ -147,7 +151,7 @@ export async function recordPredictions(env, now = Date.now() / 1000) {
     predictions[trail.key] = p;
   }
 
-  await env.TRAIL_CACHE.put(KV_KEY, JSON.stringify({
+  await env.TRAIL_CACHE.put(kvKey(env), JSON.stringify({
     updatedAt: new Date(now * 1000).toISOString(),
     fittedAt: DRYING_PARAMS.fittedAt,
     variant: DRYING_PARAMS.variant,
@@ -158,7 +162,7 @@ export async function recordPredictions(env, now = Date.now() / 1000) {
 }
 
 export async function handlePredictions(env) {
-  const data = env.TRAIL_CACHE ? await env.TRAIL_CACHE.get(KV_KEY, { type: "json" }) : null;
+  const data = env.TRAIL_CACHE ? await env.TRAIL_CACHE.get(kvKey(env), { type: "json" }) : null;
   return Response.json(data || { updatedAt: null, predictions: {} }, {
     headers: { "Cache-Control": "public, max-age=300" }
   });
