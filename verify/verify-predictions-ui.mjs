@@ -15,14 +15,15 @@ const src = readFileSync("public/script.js", "utf8")
   .replace('from "/trails.js"', 'from "../public/trails.js"')
   .replace('from "/trail-stats.js"', 'from "../public/trail-stats.js"');
 
-const [CLOSED, OPEN, REOPENED, OVERDUE, PLAIN] = TRAILS.slice(0, 5).map((t) => t.key);
+const [CLOSED, OPEN, REOPENED, OVERDUE, PLAIN, SCHEDULED] = TRAILS.slice(0, 6).map((t) => t.key);
 const now = Date.now() / 1000;
 const STATUSES = {
   [CLOSED]: { status: "Closed", updated: "1 day" },
   [OPEN]: { status: "Open", updated: "1 day" },
   [REOPENED]: { status: "Open", updated: "1 min" },   // reopened since the estimate
   [OVERDUE]: { status: "Closed", updated: "3 days" },
-  [PLAIN]: { status: "Open", updated: "1 day" }
+  [PLAIN]: { status: "Open", updated: "1 day" },
+  [SCHEDULED]: { status: "Closed", updated: "2 hours" }
 };
 const PREDICTIONS = {
   updatedAt: new Date().toISOString(),
@@ -32,7 +33,9 @@ const PREDICTIONS = {
     [OPEN]: { basis: "forecast", closeAt: now + 6 * 3600 },
     [REOPENED]: { basis: "weather", reopenAt: now + 86400 },
     [OVERDUE]: { basis: "weather", reopenAt: now + 3600, overdue: true },
-    [PLAIN]: { basis: "open" }
+    [PLAIN]: { basis: "open" },
+    // Tuesday 2026-10-13 1am CDT — a standing schedule's end, shown to the hour.
+    [SCHEDULED]: { basis: "scheduled", reopenAt: Date.parse("2026-10-13T06:00:00Z") / 1000 }
   }
 };
 
@@ -89,6 +92,8 @@ console.log("=== estimates present ===");
   check("trail reopened since the estimate: nothing shown", line(d, REOPENED), null);
   check("drained but still shut: 'Should be dry'", line(d, OVERDUE)?.textContent, "Should be dry");
   check("nothing to say: nothing shown", line(d, PLAIN), null);
+  check("scheduled closure: the exact reopening hour, no '~'", /^Reopens \S+ 1 AM$/.test(line(d, SCHEDULED)?.textContent || ""), true);
+  check("...and says it is the regular schedule", /regular schedule/.test(line(d, SCHEDULED)?.getAttribute("title") || ""), true);
   check("the estimate lives inside the Updated cell", line(d, CLOSED)?.parentElement.classList.contains("status-updated"), true);
   check("and adds no grid cell", cellsOf(rowFor(d, CLOSED)).length, cellsOf(rowFor(d, PLAIN)).length);
   check("heading still matches the row", d.querySelector(".trail-heading").children.length, cellsOf(rowFor(d, CLOSED)).length);

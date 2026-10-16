@@ -21,7 +21,7 @@ import { TRAILS } from "./public/trails.js";
 import { DRYING_PARAMS } from "./public/drying-params.js";
 import { fetchPredictionForecast } from "./public/weather.js";
 import { isClosedStatus, isRideableStatus } from "./public/status-buckets.js";
-import { classifyClosure, eventTime, mergeRain } from "./closure-classify.js";
+import { classifyClosure, eventTime, mergeRain, scheduledReopen, pastSchedule, inScheduledClosure } from "./closure-classify.js";
 import { simulate, predictReopen, predictClose, wasWetted, levelAt, snapToWindow } from "./drying-model.js";
 
 const HOUR = 3600;
@@ -57,6 +57,20 @@ export function closureStarts(events) {
   return starts;
 }
 
+// The first forecast closure that matters. A crossing inside a scheduled window
+// is moot — the trail is shut then anyway — unless the bucket is still over
+// `close` when the window ends, in which case that is when it fails to reopen.
+function closeOutsideSchedule(trail, series, now, params) {
+  for (let from = now, i = 0; i < 10; i++) {
+    const close = predictClose(series, from, params);
+    if (close === null || !inScheduledClosure(trail, close)) return close;
+    const end = scheduledReopen(trail, close);
+    if ((levelAt(series, end) ?? 0) >= params.close) return end;
+    from = end;
+  }
+  return null;
+}
+
 // One trail's prediction. Pure, so verify/ can drive it with synthetic rows.
 export function predictTrail(trail, status, closedTs, observed, forecast, now, params = DRYING_PARAMS) {
   if (!observed.length) return { basis: "no-data" };
@@ -67,11 +81,23 @@ export function predictTrail(trail, status, closedTs, observed, forecast, now, p
 
   if (isClosedStatus(status)) {
     if (closedTs == null) return { basis: "unknown-start", w };
-    const cls = classifyClosure(trail, closedTs, observed, now);
+    let cls = classifyClosure(trail, closedTs, observed, now);
+    // A scheduled closure reopens when its window ends — unless the trail will
+    // be too wet by then, or already is still shut past it. Either way the
+    // question becomes a drying one, timed from the window's end: the rain that
+    // fell during Big Cedar's Monday closure decides whether it opens Tuesday.
+    if (cls.category === "scheduled") {
+      const end = scheduledReopen(trail, closedTs);
+      if (end > now && (levelAt(series, end) ?? 0) < params.close) return { basis: "scheduled", reopenAt: end, w };
+      if (end <= now) cls = classifyClosure(trail, end, observed, now);
+      else cls = { predictable: true };
+      closedTs = end;
+    }
     if (!cls.predictable) return { basis: cls.category, w };
     if (!wasWetted(series, closedTs, params)) return { basis: "unexplained", w };
-    const reopen = predictReopen(series, closedTs, params);
+    let reopen = predictReopen(series, closedTs, params);
     if (reopen === null) return { basis: "weather", reopenAfter: rows[rows.length - 1].hour_ts, w };
+    reopen = pastSchedule(trail, reopen);
     // The bucket has already drained but the steward has not reopened yet:
     // "any time now", pinned to the next steward window rather than the past —
     // but only within the model's own error band. Past that, the drying model
@@ -80,13 +106,13 @@ export function predictTrail(trail, status, closedTs, observed, forecast, now, p
     // "any time now" for days.
     if (reopen <= now) {
       if (now - reopen > params.bandHours * HOUR) return { basis: "overdue", w };
-      return { basis: "weather", reopenAt: snapToWindow(now + HOUR, params.reopenWindow), overdue: true, w };
+      return { basis: "weather", reopenAt: pastSchedule(trail, snapToWindow(now + HOUR, params.reopenWindow)), overdue: true, w };
     }
     return { basis: "weather", reopenAt: reopen, w };
   }
 
   if (isRideableStatus(status)) {
-    const close = predictClose(series, now, params);
+    const close = closeOutsideSchedule(trail, series, now, params);
     if (close !== null && close - now <= CLOSE_HORIZON_H * HOUR) return { basis: "forecast", closeAt: close, w };
     return { basis: "open", w };
   }

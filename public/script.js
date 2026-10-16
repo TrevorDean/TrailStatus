@@ -581,15 +581,21 @@ function formatUpdated(updated) {
 // ---- Drying-model estimates (see predictions.js / drying-model.js) ----
 // "Thu PM", "today AM", "tomorrow eve" — coarse on purpose: the model is good
 // to about a day, so a minute would claim a precision it does not have.
-function dayPart(ts, long) {
+function dayName(ts, long) {
   const d = new Date(ts * 1000);
   const tz = "America/Chicago";
   const ymd = (x) => x.toLocaleDateString("en-CA", { timeZone: tz });
   const today = new Date();
   const tomorrow = new Date(today.getTime() + 86400000);
-  const day = ymd(d) === ymd(today) ? "today"
+  return ymd(d) === ymd(today) ? "today"
     : ymd(d) === ymd(tomorrow) ? "tomorrow"
     : d.toLocaleDateString("en-US", { timeZone: tz, weekday: long ? "long" : "short" });
+}
+
+function dayPart(ts, long) {
+  const d = new Date(ts * 1000);
+  const tz = "America/Chicago";
+  const day = dayName(ts, long);
   const hour = Number(d.toLocaleString("en-US", { timeZone: tz, hour: "2-digit", hour12: false })) % 24;
   const part = hour < 12 ? (long ? "morning" : "AM") : hour < 17 ? (long ? "afternoon" : "PM") : (long ? "evening" : "eve");
   return `${day} ${part}`;
@@ -605,6 +611,11 @@ function predictionInfo(trail) {
   const bucket = statusBucket(statuses[trail.key]?.status || "");
   const band = predictions.bandHours ? `typically within ±${predictions.bandHours} h` : "a rough estimate";
   const basis = `Estimated from radar rain and evaporation (${band}). Trail stewards make the call.`;
+  // A standing schedule is a calendar fact, not an estimate, so it gets the hour.
+  if (bucket === "closed" && p.basis === "scheduled" && p.reopenAt) {
+    const at = new Date(p.reopenAt * 1000).toLocaleTimeString("en-US", { timeZone: "America/Chicago", hour: "numeric" });
+    return { kind: "reopen", short: `Reopens ${dayName(p.reopenAt)} ${at}`, long: `Closed on its regular schedule; reopens ${dayName(p.reopenAt, true)} at ${at}.` };
+  }
   if (bucket === "closed" && p.overdue) {
     return { kind: "reopen", short: "Should be dry", long: `Should be dry by now; waiting on the trail steward. ${basis}` };
   }

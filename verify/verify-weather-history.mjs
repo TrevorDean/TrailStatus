@@ -116,7 +116,8 @@ console.log("\n=== standing closures (Big Cedar: Sunday + Monday) ===");
   const plain = TRAILS.find((t) => t.key === "northshore");
   const ts = (iso) => Date.parse(iso) / 1000;
 
-  check("Big Cedar carries a schedule", bigCedar.scheduledClosure.days, [0, 1]);
+  check("Big Cedar carries a schedule", bigCedar.scheduledClosure.windows,
+    [{ day: 0, from: 0, to: 13 }, { day: 1, from: 0, to: 25 }]);
   // 2026-08-30T05:15Z is Sunday 00:15 LOCAL — the UTC day is already the 30th,
   // so getUTCDay() would answer Sunday here by luck and Monday an hour later.
   check("weekday is local, not UTC", localDow(ts("2026-08-31T02:40:00Z")), 0);
@@ -145,6 +146,9 @@ console.log("\n=== standing closures (Big Cedar: Sunday + Monday) ===");
     scheduledOverlap(bigCedar, ts("2026-08-30T05:00:00Z"), ts("2026-09-03T17:00:00Z")), 0);
   check("a Wednesday closure is not scheduled",
     scheduledOverlap(bigCedar, ts("2026-09-02T14:00:00Z"), ts("2026-09-03T14:00:00Z")), 0);
+  // Hours, not whole days: Sunday is shut only until 1pm.
+  check("a closure Sunday 1am that outlasts 1pm by more than the grace is not the schedule",
+    scheduledOverlap(bigCedar, ts("2026-08-30T06:00:00Z"), ts("2026-08-31T01:00:00Z")), 0);
   check("a trail with no schedule never flags",
     scheduledOverlap(plain, ts("2026-08-30T05:00:00Z"), ts("2026-08-30T17:59:00Z")), 0);
 }
@@ -170,7 +174,7 @@ console.log("\n=== non-weather closures ===");
 
 console.log("\n=== closure classification (the gate on any prediction) ===");
 {
-  const { classifyClosure, onScheduledDay, STALE_CLOSURE_DAYS } = await import("../closure-classify.js");
+  const { classifyClosure, startsScheduledClosure, inScheduledClosure, scheduledReopen, pastSchedule, STALE_CLOSURE_DAYS } = await import("../closure-classify.js");
   const { TRAILS } = await import("../public/trails.js");
   const ts = (iso) => Date.parse(iso) / 1000;
   const bigCedar = TRAILS.find((t) => t.key === "big-cedar");
@@ -204,13 +208,27 @@ console.log("\n=== closure classification (the gate on any prediction) ===");
   // The regression that made a routine Sunday closure the only "usable" row.
   const satNight = ts("2026-09-06T04:28:00Z");   // 11:28pm SATURDAY local
   check("a Sunday closure starting Saturday night counts as scheduled",
-    onScheduledDay(bigCedar, satNight), true);
+    startsScheduledClosure(bigCedar, satNight), true);
   check("...and is therefore NOT predictable as a drying event",
     classifyClosure(bigCedar, satNight, hours(satNight, { sm: 0.30 }), satNight).predictable, false);
   // The lead window must not swallow an ordinary weekday closure.
   const thu = ts("2026-09-10T18:00:00Z");
   check("a Thursday closure is not caught by the lead window",
-    onScheduledDay(bigCedar, thu), false);
+    startsScheduledClosure(bigCedar, thu), false);
+  // Sunday afternoon is open time: a rain closure then is a real one.
+  check("a Sunday 3pm closure is NOT scheduled", startsScheduledClosure(bigCedar, ts("2026-09-13T20:00:00Z")), false);
+  check("...but Sunday 9:40pm leads into Monday's window", startsScheduledClosure(bigCedar, ts("2026-09-14T02:40:00Z")), true);
+  check("Sunday 12:59pm is inside the window", inScheduledClosure(bigCedar, ts("2026-09-13T17:59:00Z")), true);
+  check("Sunday 1pm is not", inScheduledClosure(bigCedar, ts("2026-09-13T18:00:00Z")), false);
+  check("Tuesday 12:30am is still Monday's closure", inScheduledClosure(bigCedar, ts("2026-09-15T05:30:00Z")), true);
+  check("Tuesday 1am is not", inScheduledClosure(bigCedar, ts("2026-09-15T06:00:00Z")), false);
+  check("the Sunday closure (from Saturday night) ends 1pm Sunday",
+    scheduledReopen(bigCedar, satNight), ts("2026-09-06T18:00:00Z"));
+  check("the Monday closure ends 1am Tuesday",
+    scheduledReopen(bigCedar, ts("2026-09-14T02:40:00Z")), ts("2026-09-15T06:00:00Z"));
+  check("a Monday-noon estimate moves to 1am Tuesday",
+    pastSchedule(bigCedar, ts("2026-09-14T17:00:00Z")), ts("2026-09-15T06:00:00Z"));
+  check("a Thursday estimate is left alone", pastSchedule(bigCedar, thu), thu);
   check("soil rose but rainfall disagrees => still weather, flagged disputed",
     (({ category, disputed }) => [category, disputed])(classifyClosure(plain, dry, hours(dry, { rain: 0, sm: 0.30 }), dry)),
     ["weather", true]);

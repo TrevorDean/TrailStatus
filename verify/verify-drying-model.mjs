@@ -98,8 +98,32 @@ console.log("\n=== predictTrail: who gets a time ===");
   const bigCedar = TRAILS.find((t) => t.key === "big-cedar");
   const sunday = Date.parse("2026-10-11T15:00:00Z") / 1000; // Sunday 10am CDT
   const sun = predictTrail(bigCedar, "Closed", sunday, rows(sunday - 48 * H, 48, (i) => (i === 40 ? { rain: 1, et0: 0 } : {})),
+    rows(sunday, 48, () => ({ et0: 0.05 })), sunday + H, PARAMS);
+  const sunOnePm = Date.parse("2026-10-11T18:00:00Z") / 1000;
+  check("scheduled closure, still wet at 1pm: a drying time from the window's end",
+    [sun.basis, new Date(sun.reopenAt * 1000).toISOString()], ["weather", "2026-10-13T06:00:00.000Z"]);
+  const sunDry = predictTrail(bigCedar, "Closed", sunday, rows(sunday - 48 * H, 48, () => ({})),
     rows(sunday, 48, () => ({})), sunday + H, PARAMS);
-  check("scheduled closure: declines, even with rain", [sun.basis, sun.reopenAt], ["scheduled", undefined]);
+  check("scheduled closure, dry: reopens when the window ends", [sunDry.basis, sunDry.reopenAt], ["scheduled", sunOnePm]);
+  const monday = Date.parse("2026-10-12T17:00:00Z") / 1000; // Monday noon CDT
+  const tue1am = Date.parse("2026-10-13T06:00:00Z") / 1000;
+  const mon = predictTrail(bigCedar, "Closed", Date.parse("2026-10-12T02:40:00Z") / 1000,
+    rows(monday - 48 * H, 48, () => ({})), rows(monday, 48, () => ({})), monday, PARAMS);
+  check("Monday closure: reopens 1am Tuesday", [mon.basis, mon.reopenAt], ["scheduled", tue1am]);
+  // Thursday rain closure whose bucket drains on a Monday morning: not until Tuesday.
+  const thuClose = Date.parse("2026-10-08T17:00:00Z") / 1000;
+  const drainMon = rows(thuClose - 24 * H, 24 * 6, (i) => (i === 20 ? { rain: 1, et0: 0 } : { et0: 0.0085 }));
+  const late = predictTrail(bigCedar, "Closed", thuClose, drainMon, [], thuClose + H, { ...PARAMS, reopenWindow: null });
+  check("a drying estimate landing in Monday's window moves to 1am Tuesday",
+    [late.basis, new Date(late.reopenAt * 1000).toISOString()], ["weather", "2026-10-13T06:00:00.000Z"]);
+  // A forecast closure that falls inside Monday's window, drained before it ends: no warning.
+  const sunPm = Date.parse("2026-10-11T21:00:00Z") / 1000; // Sunday 4pm CDT
+  const monRain = rows(sunPm, 48, (i) => (i === 12 ? { rain: 0.3, et0: 0 } : { et0: 0.05 }));
+  check("a closure forecast inside the schedule, dry again by 1am Tuesday: no warning",
+    predictTrail(bigCedar, "Open", null, rows(sunPm - 24 * H, 24, () => ({})), monRain, sunPm, PARAMS).basis, "open");
+  const monSoak = rows(sunPm, 48, (i) => (i === 12 ? { rain: 1, et0: 0 } : { et0: 0.001 }));
+  check("...but still soaked at 1am Tuesday: warns for then",
+    predictTrail(bigCedar, "Open", null, rows(sunPm - 24 * H, 24, () => ({})), monSoak, sunPm, PARAMS).closeAt, tue1am);
 
   const known = { ...TRAIL, knownNonWeatherClosures: [{ from: "2026-10-07", to: null, reason: "race" }] };
   check("known non-weather closure: declines", predictTrail(known, "Closed", T0 - H, wet, fc, T0, PARAMS).basis, "known-non-weather");

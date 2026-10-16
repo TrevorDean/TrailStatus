@@ -21,7 +21,6 @@ import {
   localDow,
   knownNonWeather,
   observedRain,
-  onScheduledDay,
   scheduledOverlap,
   REOPEN_GRACE,
   eventTime,

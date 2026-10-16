@@ -161,10 +161,52 @@ export function knownNonWeather(trail, closedTs) {
 // evening without reaching back across an afternoon.
 export const LEAD_GRACE_H = 6;
 
-export function onScheduledDay(trail, ts) {
-  const days = trail?.scheduledClosure?.days;
-  if (!days?.length) return false;
-  return days.includes(localDow(ts)) || days.includes(localDow(ts + LEAD_GRACE_H * 3600));
+// A schedule is a list of local windows, { day, from, to }: weekday (0 = Sunday)
+// and local hours, `to` past 24 running into the next day. Hours, not whole
+// days, because Big Cedar is shut only until 1pm on Sunday — a whole-day
+// schedule wrote off a rain closure at 3pm Sunday as routine — and its Monday
+// closure runs to 1am Tuesday.
+const localFmt = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Chicago", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false
+});
+const DOW = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+export function inScheduledClosure(trail, ts) {
+  const windows = trail?.scheduledClosure?.windows;
+  if (!windows?.length) return false;
+  const p = Object.fromEntries(localFmt.formatToParts(new Date(ts * 1000)).map((x) => [x.type, x.value]));
+  const dow = DOW[p.weekday];
+  const hour = (Number(p.hour) % 24) + Number(p.minute) / 60;
+  return windows.some((w) =>
+    (w.day === dow && hour >= w.from && hour < w.to) ||
+    (w.to > 24 && (w.day + 1) % 7 === dow && hour < w.to - 24));
+}
+
+// When the scheduled closure that `ts` begins ends — or null when `ts` neither
+// falls inside a window nor leads into one within LEAD_GRACE_H. Windows sit on
+// whole local hours, so once inside one the walk runs on top-of-hour steps.
+export function scheduledReopen(trail, ts) {
+  if (!trail?.scheduledClosure?.windows?.length) return null;
+  let t = ts;
+  while (!inScheduledClosure(trail, t)) {
+    t = Math.floor(t / HOUR) * HOUR + HOUR;
+    if (t > ts + LEAD_GRACE_H * HOUR) return null;
+  }
+  t = Math.floor(t / HOUR) * HOUR;
+  for (let i = 0; i < 72 && inScheduledClosure(trail, t); i++) t += HOUR;
+  return t;
+}
+
+// The first moment at or after `ts` the schedule lets the trail be open. A
+// drying estimate landing on Monday means Tuesday 1am at Big Cedar.
+export function pastSchedule(trail, ts) {
+  return inScheduledClosure(trail, ts) ? scheduledReopen(trail, ts) : ts;
+}
+
+// Does a closure starting at `ts` belong to the schedule — inside a window, or
+// shutting the gate the evening before one?
+export function startsScheduledClosure(trail, ts) {
+  return scheduledReopen(trail, ts) !== null;
 }
 
 /**
@@ -194,9 +236,9 @@ export function classifyClosure(trail, closedTs, weatherRows = [], now = Date.no
   if (known) {
     return { ...base, category: "known-non-weather", predictable: false, reason: known };
   }
-  if (onScheduledDay(trail, closedTs)) {
+  if (startsScheduledClosure(trail, closedTs)) {
     return { ...base, category: "scheduled", predictable: false,
-      reason: "closed on a standing scheduled-closure day; reopening is a calendar lookup, not a drying curve" };
+      reason: "closed inside a standing scheduled-closure window; reopening is a calendar lookup, not a drying curve" };
   }
   if ((now - closedTs) / 86400 > STALE_CLOSURE_DAYS) {
     return { ...base, category: "stale", predictable: false,
@@ -246,25 +288,11 @@ export const REOPEN_GRACE = 6 * 3600;
 // reopens on a schedule twice a week; mailing people about it would teach them
 // that these alerts are noise.
 export function scheduledOverlap(trail, closedTs, openedTs) {
-  const days = trail?.scheduledClosure?.days;
-  if (!days?.length) return 0;
-  // Same leading window as the classifier — see onScheduledDay(). A closure that
-  // starts the evening before a scheduled day is still that day's closure.
-  if (!onScheduledDay(trail, closedTs)) return 0;
-
-  // ...and the hour-by-hour scan has to honour that, which it did not until the
-  // alerts needed it. onScheduledDay() accepted Big Cedar's real Saturday 11:28pm
-  // start of the SUNDAY closure, and then the loop below began at that same
-  // Saturday hour, found a weekday not in the schedule, and returned 0 — so the
-  // function contradicted the comment directly above it. Skip forward over the
-  // lead-in, bounded by the same one-sided LEAD_GRACE_H, so an evening start is
-  // measured from the scheduled day it belongs to.
-  let start = closedTs;
-  const leadLimit = closedTs + LEAD_GRACE_H * 3600;
-  while (start < leadLimit && !days.includes(localDow(start))) start += 3600;
-
-  for (let t = start; t < openedTs - REOPEN_GRACE; t += 3600) {
-    if (!days.includes(localDow(t))) return 0;
-  }
-  return 1;
+  // Same leading window as the classifier: a closure that starts the evening
+  // before a window (Big Cedar's real Saturday 11:28pm start of the Sunday
+  // closure) is measured from the window it belongs to — scheduledReopen()
+  // walks across the lead-in. It used not to, and returned 0 for that closure.
+  const end = scheduledReopen(trail, closedTs);
+  if (end === null) return 0;
+  return openedTs - REOPEN_GRACE <= end ? 1 : 0;
 }
