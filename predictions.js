@@ -184,7 +184,44 @@ export async function recordPredictions(env, now = Date.now() / 1000) {
     bandHours: DRYING_PARAMS.bandHours,
     predictions
   }));
-  return { written: Object.keys(predictions).length };
+
+  // After the KV write, and swallowing its own failure: the log exists to grade
+  // the estimates, and must never cost visitors the estimates themselves.
+  let logged = 0;
+  try {
+    logged = await logPredictions(db, logRows(predictions, statusOf, now));
+  } catch (error) {
+    console.error(`prediction log failed: ${error.message}`);
+  }
+  return { written: Object.keys(predictions).length, logged };
+}
+
+// The prediction_log rows for one run (migrations/0005_prediction_log.sql):
+// only entries carrying a time — what the site can actually show.
+export function logRows(predictions, statusOf, now) {
+  const madeAt = Math.floor(now);
+  return Object.entries(predictions)
+    .filter(([, p]) => p.reopenAt != null || p.reopenAfter != null || p.closeAt != null)
+    .map(([key, p]) => [key, madeAt, p.basis, statusOf[key] ?? null,
+      p.reopenAt ?? null, p.reopenAfter ?? null, p.closeAt ?? null, p.overdue ? 1 : 0, p.w ?? null]);
+}
+
+// D1 caps a statement at 100 bound parameters: 9 columns is 11 rows apiece.
+const LOG_COLUMNS = ["trail_key", "made_at", "basis", "status", "reopen_at", "reopen_after", "close_at", "overdue", "w"];
+const LOG_CHUNK = Math.floor(100 / LOG_COLUMNS.length);
+
+async function logPredictions(db, rows) {
+  if (!rows.length) return 0;
+  const tuple = `(${LOG_COLUMNS.map(() => "?").join(",")})`;
+  const statements = [];
+  for (let i = 0; i < rows.length; i += LOG_CHUNK) {
+    const chunk = rows.slice(i, i + LOG_CHUNK);
+    statements.push(db.prepare(
+      `INSERT OR IGNORE INTO prediction_log (${LOG_COLUMNS.join(",")}) VALUES ${chunk.map(() => tuple).join(",")}`
+    ).bind(...chunk.flat()));
+  }
+  await db.batch(statements);
+  return rows.length;
 }
 
 export async function handlePredictions(env) {

@@ -8,7 +8,7 @@
 // No jsdom, no D1, no network — synthetic rows only.
 // Exits NON-ZERO on failure, like verify-rain-history.
 import { simulate, predictReopen, predictClose, wasWetted, snapToWindow, localHour } from "../drying-model.js";
-import { predictTrail, closureStarts } from "../predictions.js";
+import { predictTrail, closureStarts, logRows } from "../predictions.js";
 import { shapePredictionForecast } from "../public/weather.js";
 import { TRAILS } from "../public/trails.js";
 
@@ -180,6 +180,27 @@ console.log("\n=== the forecast feed ===");
     shaped.x.map((r) => r.precip_in), [0.2, 0.5, null]);
   check("ET0 passes through, NULL kept", shaped.x.map((r) => r.et0_in), [0.01, null, 0.02]);
   check("fanned out to every trail in the group", shaped.y === shaped.x, true);
+}
+
+console.log("\n=== the prediction log ===");
+{
+  const preds = {
+    a: { basis: "weather", reopenAt: 500, w: 0.4 },
+    b: { basis: "forecast", closeAt: 600, w: 0.1 },
+    c: { basis: "weather", reopenAt: 700, overdue: true, w: 0.05 },
+    d: { basis: "weather", reopenAfter: 800, w: 0.9 },
+    e: { basis: "scheduled", reopenAt: 900, w: 0 },
+    f: { basis: "open", w: 0 },
+    g: { basis: "overdue", w: 0 },
+    h: { basis: "unknown-status" }
+  };
+  const got = logRows(preds, { a: "Closed", b: "Caution" }, 123.7);
+  check("only entries carrying a time are logged", got.map((r) => r[0]), ["a", "b", "c", "d", "e"]);
+  check("row shape matches the table's columns",
+    got[0], ["a", 123, "weather", "Closed", 500, null, null, 0, 0.4]);
+  check("a close warning keeps the status it was made against", got[1].slice(2, 7), ["forecast", "Caution", null, null, 600]);
+  check("'Should be dry' is flagged overdue", got[2][7], 1);
+  check("a missing status is NULL, not a guess", got[3][3], null);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
