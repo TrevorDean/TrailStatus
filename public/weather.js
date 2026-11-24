@@ -1,7 +1,7 @@
 // Shared Open-Meteo forecast client — the ONE place the request is built and the
 // response is shaped. Imported by BOTH sides so they cannot drift:
-//   scripts/update-weather.js  (the hourly cron, writes KV key "trail_weather")
-//   worker.js                  (cold-start fallback when that key is empty)
+//   forecast-cache.js  (the Worker cron, writes KV key "trail_weather" hourly)
+//   worker.js          (handleWeather's live fallback when that key is short)
 //
 // Open-Meteo needs no API key and takes every trailhead in a single request, so
 // there is no batching here the way there is for the Trailforks scrape.

@@ -4,6 +4,7 @@ import { recordStatusChanges } from "./history.js";
 import { recordWeatherHour } from "./weather-history.js";
 import { recordRainHour } from "./rain-history.js";
 import { recordPredictions, handlePredictions } from "./predictions.js";
+import { recordForecast, WEATHER_KEY } from "./forecast-cache.js";
 import {
   handleConfirm,
   handleManage,
@@ -98,6 +99,11 @@ export default {
     ctx.waitUntil(recordRainHour(env).catch((error) => {
       console.error(`rain archive failed: ${error.message}`);
     }));
+    // The Rain 8h forecast in KV, refreshed on the first tick of each hour.
+    // Moved here from GitHub Actions on 2026-11-24 (see forecast-cache.js).
+    ctx.waitUntil(recordForecast(env).catch((error) => {
+      console.error(`forecast refresh failed: ${error.message}`);
+    }));
     // Not an archive: a derived value, refreshed hourly in KV. Reads D1, writes
     // nothing there. Same isolation — a failure here costs only the prediction.
     ctx.waitUntil(recordPredictions(env).catch((error) => {
@@ -136,9 +142,9 @@ async function handleStatus(env) {
 // an Open-Meteo outage must not be able to take the status feed down with it, and
 // the two want different cache lifetimes (the forecast is refreshed hourly).
 //
-// This endpoint is deliberately SELF-HEALING, because the cron that feeds it is
-// not reliable: GitHub throttles `schedule:` to ~hourly at best and drops delayed
-// runs instead of queueing them, so KV can go many hours without a write. A
+// This endpoint is deliberately SELF-HEALING. The Worker's own cron now feeds it
+// hourly (forecast-cache.js; until 2026-11-24 a GitHub Actions workflow did, and
+// that one went hours without a write), but if the cron ever stalls, a
 // cached block whose hours have mostly slid into the past is treated as no better
 // than an empty one and re-fetched live. Unlike the status fallback below, this
 // one actually works from a Worker — Open-Meteo does not block Cloudflare the way
@@ -147,7 +153,7 @@ const weatherHeaders = { "Cache-Control": "public, max-age=300" };
 
 async function handleWeather(env) {
   const cached = env.TRAIL_CACHE
-    ? await env.TRAIL_CACHE.get("trail_weather", { type: "json" })
+    ? await env.TRAIL_CACHE.get(WEATHER_KEY, { type: "json" })
     : null;
 
   if (futureHourCount(cached?.times) >= DISPLAY_HOURS) {
