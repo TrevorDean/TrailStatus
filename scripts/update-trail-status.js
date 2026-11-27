@@ -39,14 +39,60 @@ async function kvPut(key, value) {
   if (!res.ok) throw new Error(`KV put failed for ${key}: ${await res.text()}`);
 }
 
+// A fetch failure must not blank a trail's last known-good status. Trailforks
+// sits behind Cloudflare bot protection and returns HTTP 403 to a fraction of
+// GitHub Actions runner IPs, so a single blocked run (every request in it 403s,
+// since fetchWithRetry retries from the same IP) would otherwise flip a whole
+// batch to "Unavailable" until the next good run ~5 min later. We carry the
+// previous REAL status forward across the gap instead — but only for STALE_MS:
+// after six hours of continuous failure the trail is genuinely unobserved, and
+// the UI should say "Unavailable" rather than present a day-old status as current.
+const STALE_MS = 6 * 60 * 60 * 1000;
+
+// Mirrors isRealStatus() in history.js: "Unknown"/"Unavailable"/"" are the
+// absence of an observation, not a status. Restated here because this is a Node
+// script and importing the Worker module would couple them — change one, change both.
+function isRealStatus(status) {
+  const s = String(status || "").trim().toLowerCase();
+  return s !== "" && s !== "unknown" && s !== "unavailable";
+}
+
 async function refreshBatch(sources, cacheKey) {
   const old = await kvGet(cacheKey);
   const oldStatuses = old?.statuses || {};
+  const now = Date.now();
   const results = [];
   for (const source of sources) {
     const result = await fetchStatus(source);
-    if (!result.city && oldStatuses[source.key]?.city) result.city = oldStatuses[source.key].city;
-    if (!result.lta && oldStatuses[source.key]?.lta) result.lta = oldStatuses[source.key].lta;
+    const prev = oldStatuses[source.key];
+    if (!result.city && prev?.city) result.city = prev.city;
+    if (!result.lta && prev?.lta) result.lta = prev.lta;
+
+    if (!isRealStatus(result.status) && isRealStatus(prev?.status)) {
+      // statusAsOf is when we last actually observed a real status; measure
+      // staleness from there, not from the last carry, so the 6h cap counts from
+      // the last SUCCESS even across a run of failures. Fall back to the batch
+      // updatedAt for rows written before statusAsOf existed.
+      const asOf = prev.statusAsOf || old?.updatedAt;
+      const age = asOf ? now - Date.parse(asOf) : Infinity;
+      if (Number.isFinite(age) && age <= STALE_MS) {
+        const mins = Math.round(Math.max(0, age) / 60000);
+        results.push({
+          ...result,
+          status: prev.status,
+          updated: prev.updated || "",
+          detail: `cached ${mins}m (live: ${result.detail})`,
+          statusAsOf: asOf,
+          stale: true
+        });
+        console.log(`  ${source.key}: ${prev.status} (cached ${mins}m, live ${result.detail})`);
+        continue;
+      }
+    }
+
+    // A fresh real status — stamp the observation time so staleness is measurable
+    // next run. A stale-expired or never-seen failure falls through as-is.
+    if (isRealStatus(result.status)) result.statusAsOf = new Date(now).toISOString();
     results.push(result);
     console.log(`  ${source.key}: ${result.status}${result.detail ? ` (${result.detail})` : ""}`);
   }
